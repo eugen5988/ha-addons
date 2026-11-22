@@ -1,0 +1,21 @@
+configuration:
+  anthropic_api_key:
+    name: Anthropic API-Key
+    description: Fuer die KI-Kategorisierung (console.anthropic.com). Leer = nur Regeln und Verlauf.
+  claude_modell:
+    name: Claude-Modell
+    description: Kleines, guenstiges Modell genuegt (Standard claude-haiku-5-5).
+  ki_aktiv:
+    name: KI-Kategorisierung
+    description: Neue, unbekannte Haendler von Claude einordnen lassen.
+  pytr_verzeichnis:
+    name: pytr-Verzeichnis
+    description: Ordner fuer die Trade-Republic-Sitzung (pytr-Cookies). Zugangsdaten aller Banken pflegst du in der App unter Mehr → Banken.
+  zugriffs_token:
+    name: Zugriffs-Token fuer die Web-App
+    description: Nur noetig fuer den direkten Aufruf als iPhone-Web-App ueber Port 8199 (ausserhalb von Home Assistant). Leer = direkter Zugriff gesperrt.
+  sensor_praefix:
+    name: Sensor-Praefix
+    description: Basis fuer die Entity-IDs der Dashboard-Sensoren.
+network:
+  8099/tcp: Direkter Zugriff fuer die iPhone-Web-App

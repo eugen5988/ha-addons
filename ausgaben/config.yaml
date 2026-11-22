@@ -1,0 +1,39 @@
+name: Ausgaben
+version: "1.5.0"
+slug: ausgaben
+description: Haushaltsbuch mit automatischer Erfassung (Trade Republic, DKB, comdirect), Kassenbon-Scan und KI-Kategorisierung
+url: https://github.com/eugen5988/ha-addons/tree/main/ausgaben
+arch:
+  - amd64
+  - aarch64
+init: false
+startup: application
+boot: auto
+ingress: true
+ingress_port: 8099
+panel_icon: mdi:cash-multiple
+panel_title: Ausgaben
+homeassistant_api: true
+ports:
+  8099/tcp: 8199
+ports_description:
+  8099/tcp: Direkter Zugriff fuer die iPhone-Web-App (optional, nur mit Zugriffs-Token)
+map:
+  - type: homeassistant_config
+    read_only: false
+  - type: share
+    read_only: false
+options:
+  anthropic_api_key: ""
+  claude_modell: claude-haiku-5-5
+  ki_aktiv: true
+  pytr_verzeichnis: /homeassistant/pytr
+  zugriffs_token: ""
+  sensor_praefix: allgemein_finanzen_ausgaben
+schema:
+  anthropic_api_key: password
+  claude_modell: str
+  ki_aktiv: bool
+  pytr_verzeichnis: str
+  zugriffs_token: password
+  sensor_praefix: str

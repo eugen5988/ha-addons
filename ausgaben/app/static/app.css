@@ -1,0 +1,339 @@
+:root {
+  --oben: env(safe-area-inset-top, 0px);
+  --unten: env(safe-area-inset-bottom, 0px);
+  /* Leiste naeher an die Home-Leiste des iPhones, ohne sie zu ueberdecken */
+  --unten-leiste: max(8px, calc(var(--unten) - 14px));
+  --grund: #F3F5F4;
+  --flaeche: #FFFFFF;
+  --flaeche-2: #E9EEEC;
+  --tinte: #16201C;
+  --leise: #66736D;
+  --linie: #DCE3E0;
+  --akzent: #1E6B52;
+  --akzent-zart: #DCEDE6;
+  --pruefen: #A3461F;
+  --pruefen-zart: #F6E4DA;
+  --gutschrift: #2E7D5B;
+  --auf-akzent: #FFFFFF;
+  --radius-gross: 22px;
+  --radius: 14px;
+  --radius-klein: 9px;
+  --schrift: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  --anzeige: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+  color-scheme: light;
+  box-sizing: border-box;
+  padding-top: var(--oben);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --grund: #0F1513;
+    --flaeche: #18201D;
+    --flaeche-2: #212B27;
+    --tinte: #E8EEEB;
+    --leise: #93A39B;
+    --linie: #2A3531;
+    --akzent: #5CC29A;
+    --akzent-zart: #1D3A2F;
+    --pruefen: #F08A5D;
+    --pruefen-zart: #3A2519;
+    --gutschrift: #6FD0A4;
+    --auf-akzent: #08130F;
+    color-scheme: dark;
+  }
+}
+/* In Home Assistant eingebettet: HA kuemmert sich selbst um Notch und Home-Leiste */
+:root.eingebettet { --oben: 0px; --unten: 0px; --unten-leiste: 8px; }
+:root.eingebettet #ansicht { padding-top: 4px; }
+:root.eingebettet .kopf { margin-top: 2px; }
+*, *::before, *::after { box-sizing: inherit; }
+html, body { margin: 0; background: var(--grund); color: var(--tinte); font-family: var(--schrift);
+  font-size: 16px; line-height: 1.4; -webkit-text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: var(--oben);
+  background: var(--grund); z-index: 30; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--akzent); outline-offset: 2px; }
+.zahl { font-variant-numeric: tabular-nums; }
+.leise { color: var(--leise); }
+[hidden] { display: none !important; }
+
+#ansicht { max-width: 760px; margin: 0 auto;
+  padding: 12px 16px calc(92px + var(--unten-leiste)); }
+
+/* ---------- Kopf & Zeitraum ---------- */
+.kopf { display: flex; align-items: center; gap: 8px; margin: 6px 0 14px; }
+.kopf h1 { font-family: var(--anzeige); font-size: 28px; letter-spacing: -0.02em; margin: 0; flex: 1; }
+.segment { display: flex; background: var(--flaeche-2); border-radius: 11px; padding: 3px; gap: 2px; }
+.segment button { flex: 1; border: 0; background: transparent; padding: 7px 10px; border-radius: 8px;
+  font-size: 14px; color: var(--leise); }
+.segment button.aktiv { background: var(--flaeche); color: var(--tinte); font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+.zeitraum { display: flex; align-items: center; justify-content: space-between; margin: 14px 0 4px; }
+.zeitraum .label { font-weight: 600; font-size: 17px; text-align: center; flex: 1; }
+.rund { width: 38px; height: 38px; border-radius: 50%; border: 0; background: var(--flaeche);
+  display: grid; place-items: center; font-size: 18px; color: var(--tinte); }
+.rund:disabled { opacity: .35; }
+
+/* ---------- Gesamtbetrag & Kategorienband ---------- */
+.gesamt { margin: 18px 0 6px; }
+.gesamt .betrag { font-family: var(--anzeige); font-size: 46px; font-weight: 700; letter-spacing: -0.035em;
+  line-height: 1.05; }
+.gesamt .betrag small { font-size: 26px; font-weight: 600; }
+.gesamt .vergleich { font-size: 14px; color: var(--leise); margin-top: 4px; }
+.vergleich .hoch { color: var(--pruefen); font-weight: 600; }
+.vergleich .runter { color: var(--gutschrift); font-weight: 600; }
+
+.band { display: flex; height: 28px; border-radius: 8px; overflow: hidden; margin: 16px 0 6px;
+  background: var(--flaeche-2); gap: 2px; }
+.band button { border: 0; padding: 0; min-width: 3px; transition: flex-grow .35s ease, opacity .2s; }
+.band.gewaehlt button:not(.aktiv) { opacity: .28; }
+@media (prefers-reduced-motion: reduce) { .band button { transition: none; } }
+
+/* ---------- Karten & Listen ---------- */
+.block { background: var(--flaeche); border-radius: var(--radius-gross); padding: 14px 16px; margin: 14px 0; }
+.block h2 { font-size: 15px; font-weight: 600; margin: 0 0 10px; display: flex; justify-content: space-between;
+  align-items: baseline; }
+.block h2 .leise { font-weight: 400; font-size: 14px; }
+
+.katzeile { display: grid; grid-template-columns: 34px 1fr auto; gap: 10px; align-items: center;
+  padding: 8px 0; border: 0; background: none; width: 100%; text-align: left; }
+.katzeile + .katzeile { border-top: 1px solid var(--linie); }
+.katzeile .ic { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; font-size: 17px; }
+.katzeile .name { font-size: 15px; }
+.katzeile .balken { height: 5px; border-radius: 3px; margin-top: 5px; background: var(--flaeche-2); overflow: hidden; }
+.katzeile .balken i { display: block; height: 100%; border-radius: 3px; }
+.katzeile .wert { text-align: right; font-weight: 600; font-size: 15px; }
+.katzeile .wert small { display: block; font-weight: 400; color: var(--leise); font-size: 12px; }
+
+.tag-kopf { display: flex; justify-content: space-between; font-size: 13px; color: var(--leise);
+  margin: 18px 4px 6px; }
+.liste { background: var(--flaeche); border-radius: var(--radius); overflow: hidden; }
+.eintrag { display: grid; grid-template-columns: 38px 1fr auto; gap: 11px; align-items: center; width: 100%;
+  border: 0; background: none; padding: 10px 14px; text-align: left; }
+.eintrag + .eintrag { border-top: 1px solid var(--linie); }
+.eintrag .ic { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; font-size: 18px; }
+.eintrag .titel, .eintrag .unter { display: block; }
+.eintrag .titel { font-size: 15px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.eintrag .unter { font-size: 12.5px; color: var(--leise); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.eintrag .wert { text-align: right; font-weight: 600; font-size: 15px; white-space: nowrap; }
+.eintrag .wert small { display: block; font-weight: 400; font-size: 12px; color: var(--leise); }
+.eintrag .wert.gut { color: var(--gutschrift); }
+.marke { display: inline-block; font-size: 11px; padding: 1px 6px; border-radius: 6px; margin-left: 4px;
+  vertical-align: 1px; font-weight: 600; }
+.marke.pruefen { background: var(--pruefen-zart); color: var(--pruefen); }
+.marke.auto { background: var(--akzent-zart); color: var(--akzent); }
+
+.hinweis { display: flex; align-items: center; gap: 12px; background: var(--pruefen-zart); color: var(--tinte);
+  border: 0; border-radius: var(--radius); padding: 12px 14px; width: 100%; text-align: left; margin: 12px 0; }
+.hinweis b { color: var(--pruefen); }
+.hinweis.ok { background: var(--akzent-zart); }
+.leer { text-align: center; color: var(--leise); padding: 34px 16px; }
+.leer button { margin-top: 12px; }
+
+/* ---------- Pruefen-Karten ---------- */
+.pruefkarte { background: var(--flaeche); border-radius: var(--radius); padding: 12px 14px; margin: 10px 0; }
+.pruefkarte .oben { display: flex; justify-content: space-between; gap: 10px; }
+.pruefkarte .roh { font-size: 12.5px; color: var(--leise); }
+.chips { display: flex; gap: 6px; overflow-x: auto; padding: 10px 0 2px; scrollbar-width: none; }
+.chips::-webkit-scrollbar { display: none; }
+.chip { flex: none; border: 1px solid var(--linie); background: var(--flaeche); border-radius: 18px;
+  padding: 6px 11px; font-size: 13.5px; white-space: nowrap; }
+.chip.aktiv { background: var(--tinte); color: var(--grund); border-color: var(--tinte); }
+.mehr-liste button.gewaehlt { font-weight: 600; color: var(--akzent); }
+.mehr-liste .haken { color: var(--akzent); font-weight: 700; }
+.chip.vorschlag { border-color: var(--akzent); color: var(--akzent); font-weight: 600; }
+
+/* ---------- Suche ---------- */
+.suche { position: sticky; top: var(--oben); z-index: 5; background: var(--grund);
+  padding: 6px 0 4px; }
+.suchfeld { display: flex; align-items: center; gap: 8px; background: var(--flaeche-2); border-radius: 12px;
+  padding: 0 12px; }
+.suchfeld input { border: 0; background: transparent; padding: 11px 0; flex: 1; min-width: 0; outline: none; font-size: 16px; }
+.summenzeile { display: flex; justify-content: space-between; font-size: 13.5px; color: var(--leise); margin: 8px 4px 0; }
+
+/* ---------- Diagramm ---------- */
+.diagramm { width: 100%; display: block; overflow: visible; }
+.diagramm .bar { fill: var(--akzent); }
+.diagramm .bar.leer { fill: var(--flaeche-2); }
+.diagramm .bar.aktiv { fill: var(--pruefen); }
+.diagramm text { fill: var(--leise); font-size: 11px; font-family: var(--schrift); }
+.diagramm .mittel { stroke: var(--leise); stroke-dasharray: 3 4; stroke-width: 1; }
+.diagramm-info { font-size: 13px; color: var(--leise); min-height: 18px; margin-top: 4px; }
+
+/* ---------- Buttons & Formulare ---------- */
+.knopf { border: 0; border-radius: 12px; padding: 12px 16px; font-weight: 600; background: var(--akzent);
+  color: var(--auf-akzent); font-size: 16px; }
+.knopf.zweit { background: var(--flaeche-2); color: var(--tinte); }
+.knopf.gefahr { background: transparent; color: var(--pruefen); }
+.knopf.klein { padding: 7px 12px; font-size: 14px; border-radius: 10px; }
+.knopf:disabled { opacity: .5; }
+.knopfreihe { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.knopfreihe .knopf { flex: 1; }
+
+.feld { display: block; margin: 12px 0; }
+.feld > span { display: block; font-size: 13px; color: var(--leise); margin: 0 0 5px 2px; }
+.feld input, .feld select, .feld textarea { width: 100%; border: 1px solid var(--linie); background: var(--flaeche);
+  border-radius: 11px; padding: 11px 12px; font-size: 16px; }
+.feld textarea { min-height: 70px; resize: vertical; }
+.zwei { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.zwei .feld { margin: 0; }
+.zwei > * { min-width: 0; }
+/* iOS: Datumsfelder sonst ohne Hoehe und breiter als die Spalte */
+.feld input[type="date"], .feld input[type="datetime-local"] { -webkit-appearance: none; appearance: none;
+  display: block; min-width: 0; max-width: 100%; min-height: 46px; text-align: left; }
+.feld input::-webkit-date-and-time-value { text-align: left; }
+
+.mehr-liste { background: var(--flaeche); border-radius: var(--radius); overflow: hidden; margin: 12px 0; }
+.mehr-liste button, .mehr-liste .zeile { display: flex; align-items: center; gap: 12px; width: 100%; border: 0;
+  background: none; text-align: left; padding: 13px 14px; font-size: 15.5px; }
+.mehr-liste > * + * { border-top: 1px solid var(--linie); }
+.mehr-liste .rechts { margin-left: auto; color: var(--leise); font-size: 14px; text-align: right; }
+.mehr-liste .ic { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; font-size: 16px;
+  background: var(--flaeche-2); flex: none; }
+.abschnitt { font-size: 13px; color: var(--leise); margin: 22px 4px 6px; }
+.status-punkt { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+
+/* ---------- Bottom-Navigation ---------- */
+.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; display: flex; justify-content: center;
+  align-items: flex-end; gap: 4px; padding: 6px 10px var(--unten-leiste);
+  background: color-mix(in srgb, var(--grund) 88%, transparent); backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px); border-top: 1px solid var(--linie); }
+.tabs button { flex: 1; max-width: 120px; border: 0; background: none; color: var(--leise); font-size: 11px;
+  display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 4px 0; }
+.tabs button svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.8;
+  stroke-linecap: round; stroke-linejoin: round; }
+.tabs button[data-tab="mehr"] svg circle { fill: currentColor; stroke: none; }
+.tabs button[data-tab="uebersicht"] svg path:last-child { fill: currentColor; stroke: none; }
+.tabs button.aktiv { color: var(--akzent); }
+.tabs .plus { flex: none; width: 58px; height: 58px; border-radius: 50%; background: var(--akzent); color: var(--auf-akzent);
+  margin-top: -22px; box-shadow: 0 6px 18px color-mix(in srgb, var(--akzent) 45%, transparent);
+  justify-content: center; }
+.tabs .plus svg { width: 28px; height: 28px; stroke-width: 2.4; }
+
+/* ---------- Sheet ---------- */
+#sheet-hintergrund { position: fixed; inset: 0; background: rgba(0,0,0,.38); z-index: 40; }
+#sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 41; max-width: 640px; margin: 0 auto;
+  background: var(--grund); border-radius: 22px 22px 0 0; max-height: calc(100% - 28px - var(--oben));
+  overflow-y: auto; overscroll-behavior: contain; padding: 8px 16px calc(20px + var(--unten));
+  animation: hoch .26s cubic-bezier(.2,.8,.2,1); }
+@keyframes hoch { from { transform: translateY(40px); opacity: .4; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { #sheet { animation: none; } }
+.griff { width: 38px; height: 5px; border-radius: 3px; background: var(--linie); margin: 2px auto 10px; }
+.sheet-kopf { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.sheet-kopf h3 { margin: 0; font-size: 17px; }
+.sheet-kopf button { border: 0; background: none; color: var(--akzent); font-size: 16px; padding: 6px 0; }
+.sheet-kopf button.fett { font-weight: 700; }
+
+.betragseingabe { display: flex; align-items: baseline; justify-content: center; gap: 8px; margin: 10px 0 4px; }
+.betragseingabe input { border: 0; background: transparent; font-family: var(--anzeige); font-size: 48px;
+  font-weight: 700; letter-spacing: -0.03em; width: 6.5ch; text-align: right; outline: none;
+  font-variant-numeric: tabular-nums; }
+.betragseingabe select { border: 0; background: var(--flaeche-2); border-radius: 10px; padding: 6px 8px;
+  font-size: 17px; font-weight: 600; }
+.umrechnung { text-align: center; font-size: 13px; color: var(--leise); min-height: 18px; }
+.vorzeichen { display: flex; justify-content: center; margin: 4px 0 2px; }
+
+.katgitter { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 6px; margin: 8px 0; }
+.katgitter button { border: 1px solid transparent; background: var(--flaeche); border-radius: 12px; padding: 8px 4px;
+  display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 11.5px; line-height: 1.2;
+  min-height: 64px; text-align: center; }
+.katgitter button span { font-size: 21px; }
+.katgitter button.aktiv { border-color: var(--tinte); background: var(--flaeche-2); font-weight: 600; }
+
+.vorschlagsliste { background: var(--flaeche); border-radius: 11px; margin-top: 4px; overflow: hidden; }
+.vorschlagsliste button { display: flex; width: 100%; border: 0; background: none; padding: 9px 12px; gap: 8px;
+  text-align: left; font-size: 15px; align-items: center; }
+.vorschlagsliste button + button { border-top: 1px solid var(--linie); }
+.vorschlagsliste .rechts { margin-left: auto; font-size: 13px; color: var(--leise); }
+.herkunft { font-size: 12.5px; color: var(--leise); background: var(--flaeche); border-radius: 11px;
+  padding: 9px 12px; margin: 10px 0; }
+
+.teil { display: grid; grid-template-columns: 1fr 110px 34px; gap: 6px; align-items: end; margin: 8px 0; }
+.teil select, .teil input { width: 100%; border: 1px solid var(--linie); background: var(--flaeche);
+  border-radius: 10px; padding: 9px 8px; font-size: 15px; }
+.teil button { border: 0; background: none; color: var(--pruefen); font-size: 20px; height: 40px; }
+
+.farbwahl { display: flex; gap: 6px; flex-wrap: wrap; }
+.farbwahl button { width: 30px; height: 30px; border-radius: 50%; border: 2px solid transparent; }
+.farbwahl button.aktiv { border-color: var(--tinte); }
+
+#toast { position: fixed; left: 50%; transform: translateX(-50%); z-index: 60;
+  bottom: calc(84px + var(--unten-leiste)); background: var(--tinte); color: var(--grund);
+  padding: 10px 16px; border-radius: 12px; font-size: 14.5px; max-width: 90vw; }
+#toast button { background: none; border: 0; color: var(--akzent-zart); font-weight: 700; margin-left: 10px; }
+
+.anmeldung { max-width: 360px; margin: 18vh auto 0; text-align: center; }
+.anmeldung h1 { font-family: var(--anzeige); font-size: 30px; letter-spacing: -0.02em; margin: 0 0 6px; }
+pre.klein { font-size: 12px; white-space: pre-wrap; background: var(--flaeche); padding: 10px; border-radius: 10px; }
+
+@media (min-width: 700px) {
+  .gesamt .betrag { font-size: 56px; }
+  .zweispaltig { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+  .zweispaltig .block { margin: 0; }
+}
+
+/* ---------- Doppelte Eintraege ---------- */
+.dup-zeile { display: grid; grid-template-columns: 34px 1fr auto; gap: 10px; align-items: center; padding: 9px 0;
+  border-top: 1px solid var(--linie); margin-top: 8px; }
+.dup-zeile .ic { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; font-size: 17px; }
+.dup-zeile .titel { display: block; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+.dup-zeile small { display: block; font-size: 12.5px; }
+
+/* ---------- Banken: Durchsicht ---------- */
+.nh-zeile { display: grid; grid-template-columns: 26px 1fr auto; gap: 8px; align-items: center; padding: 8px 0;
+  border-top: 1px solid var(--linie); }
+.nh-zeile input[type=checkbox] { width: 20px; height: 20px; accent-color: var(--akzent); }
+.nh-text { border: 0; background: none; text-align: left; padding: 0; min-width: 0; }
+.nh-text .titel { display: block; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nh-text small { display: block; font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nh-betrag { font-weight: 600; font-size: 15px; white-space: nowrap; }
+.nh-betrag.gut { color: var(--gutschrift); }
+.nh-leiste { position: sticky; bottom: calc(78px + var(--unten-leiste)); padding: 10px 0; background: linear-gradient(transparent, var(--grund) 30%); }
+.nh-leiste .knopf { width: 100%; box-shadow: 0 6px 18px rgba(0,0,0,.15); }
+.mehr-liste label.zeile input[type=checkbox] { width: 20px; height: 20px; accent-color: var(--akzent); }
+
+/* ---------- Design-Auswahl ---------- */
+.design-gitter { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin: 14px 0; }
+.design-karte { border: 2px solid transparent; background: var(--flaeche); border-radius: 16px; padding: 8px; text-align: left; }
+.design-karte.aktiv { border-color: var(--tinte); }
+.design-karte .vorschau { display: grid; grid-template-columns: 1fr 1fr; border-radius: 10px; overflow: hidden; height: 92px; }
+.design-karte .halb { padding: 8px 7px; display: flex; flex-direction: column; gap: 5px; position: relative; }
+.design-karte .mini { border-radius: 6px; padding: 6px; display: flex; flex-direction: column; gap: 4px; }
+.design-karte .strich { height: 5px; border-radius: 3px; }
+.design-karte .balken { display: flex; align-items: flex-end; gap: 3px; height: 18px; }
+.design-karte .balken i { flex: 1; border-radius: 2px; }
+.design-karte .knopf-mini { position: absolute; right: 7px; bottom: 7px; width: 16px; height: 16px; border-radius: 50%; }
+.design-karte .punkt { position: absolute; left: 7px; bottom: 9px; width: 18px; height: 7px; border-radius: 4px; }
+.design-karte .name { display: flex; justify-content: space-between; align-items: center; font-size: 14.5px; font-weight: 600; margin: 8px 2px 2px; }
+.design-karte .haken { color: var(--akzent); }
+.farbpunkte { display: inline-flex; gap: 3px; margin-left: 8px; vertical-align: middle; }
+.farbpunkte i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; border: 1px solid var(--linie); }
+.check-zeile { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; margin: 4px 2px 10px; line-height: 1.35; }
+.check-zeile input { margin-top: 2px; flex: none; width: 18px; height: 18px; accent-color: var(--akzent); }
+details.erweitert { margin: 4px 0 6px; }
+details.erweitert summary { cursor: pointer; font-size: 14.5px; font-weight: 600; color: var(--akzent); padding: 8px 2px; list-style: none; }
+details.erweitert summary::-webkit-details-marker { display: none; }
+details.erweitert summary::before { content: "›"; display: inline-block; width: 14px; transition: transform .15s; }
+details.erweitert[open] summary::before { transform: rotate(90deg); }
+.beleg-knopf { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; margin: 6px 0 4px;
+  padding: 11px; border: 1.5px dashed var(--linie); border-radius: 12px; background: transparent;
+  color: var(--akzent); font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; }
+.beleg-knopf:disabled { opacity: .5; }
+.beleg-ergebnis { display: flex; align-items: center; gap: 12px; background: var(--akzent-zart); border-radius: 12px;
+  padding: 10px 12px; margin: 6px 0; font-size: 14px; line-height: 1.4; }
+.beleg-ergebnis > div { flex: 1; min-width: 0; }
+.beleg-ergebnis img { width: 46px; height: 62px; object-fit: cover; border-radius: 6px; flex: none; background: #fff; }
+.beleg-dup { display: block; margin: 6px 0; font-size: 14px; }
+.beleg-dup-zeile { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 6px; }
+.beleg-dup-zeile .knopf { width: auto; flex: none; }
+.beleg-tipp { font-size: 13px; margin: 6px 4px; }
+.beleg-pos { list-style: none; padding: 0; margin: 0 0 8px; font-size: 13.5px; }
+.beleg-pos li { display: flex; justify-content: space-between; gap: 12px; padding: 4px 2px; border-bottom: 1px solid var(--linie); }
+.beleg-pos li span:last-child { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.kreisel { width: 20px; height: 20px; border: 2.5px solid var(--linie); border-top-color: var(--akzent); border-radius: 50%;
+  animation: drehen .8s linear infinite; flex: none; }
+@keyframes drehen { to { transform: rotate(360deg); } }
+.ki-kacheln { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 0 0 10px; }
+.ki-kachel { background: var(--flaeche); border-radius: 12px; padding: 10px 12px; min-width: 0; }
+.ki-kachel small { display: block; color: var(--leise); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ki-kachel b { display: block; font-size: 19px; margin: 2px 0; font-variant-numeric: tabular-nums; white-space: nowrap; }

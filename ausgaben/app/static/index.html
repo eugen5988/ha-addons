@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Ausgaben">
+<meta name="theme-color" content="#F3F5F4" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0F1513" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="static/manifest.json">
+<link rel="apple-touch-icon" href="static/icon-180.png">
+<link rel="icon" href="static/icon-180.png">
+<script>if (window.self !== window.top) document.documentElement.classList.add("eingebettet");</script>
+<script>(function(){try{var d=JSON.parse(localStorage.getItem("ausgaben_design")||"null");if(!d||!d.hell)return;var dk=d.modus==="dunkel"||(d.modus!=="hell"&&matchMedia("(prefers-color-scheme: dark)").matches);var v=dk?d.dunkel:d.hell,st=document.documentElement.style;for(var k in v)st.setProperty("--"+k,v[k]);st.colorScheme=dk?"dark":"light";}catch(e){}})();</script>
+<link rel="stylesheet" href="static/app.css?v=13">
+<title>Ausgaben</title>
+</head>
+<body>
+<main id="ansicht" aria-live="polite"></main>
+
+<nav class="tabs" aria-label="Hauptnavigation">
+  <button data-tab="uebersicht" class="aktiv"><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9h-9z"/><path d="M15 3.5A9 9 0 0 1 20.5 9H15z"/></svg>Übersicht</button>
+  <button data-tab="eintraege"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Einträge</button>
+  <button class="plus" id="plus" aria-label="Ausgabe erfassen"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+  <button data-tab="verlauf"><svg viewBox="0 0 24 24"><path d="M5 20V12M10 20V6M15 20v-9M20 20V4"/></svg>Verlauf</button>
+  <button data-tab="mehr"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>Mehr</button>
+</nav>
+
+<div id="sheet-hintergrund" hidden></div>
+<section id="sheet" role="dialog" aria-modal="true" hidden></section>
+<div id="toast" role="status" hidden></div>
+
+<script src="static/app.js?v=13"></script>
+</body>
+</html>
