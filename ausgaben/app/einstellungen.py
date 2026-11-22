@@ -20,4 +20,8 @@ def optionen():
             daten.update(json.load(f))
     except FileNotFoundError:
         pass
+    # Beim Einfuegen rutschen leicht Leerzeichen oder Zeilenumbrueche mit hinein
+    for k in ("anthropic_api_key", "claude_modell", "zugriffs_token", "sensor_praefix"):
+        if isinstance(daten.get(k), str):
+            daten[k] = daten[k].strip()
     return daten

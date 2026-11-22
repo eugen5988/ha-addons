@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.5.1
+
+- API-Key und Token werden ohne versehentlich eingefügte Leerzeichen oder Zeilenumbrüche verwendet.
+- Verständliche Fehlermeldungen der KI (z. B. „API-Key ungültig oder abgelaufen“ statt „401 Unauthorized“).
+
 ## 1.5.0
 
 - Umzug in das GitHub-Repository `eugen5988/ha-addons`: Updates kommen jetzt direkt über den App Store.

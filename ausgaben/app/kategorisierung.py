@@ -241,6 +241,17 @@ def frage_claude(eintraege, zweck="kategorisierung"):
         text = re.sub(r"```(json)?", "", text).strip()
         start, ende = text.find("["), text.rfind("]")
         daten = json.loads(text[start : ende + 1])
+    except httpx.HTTPStatusError as e:
+        meldung = {401: "API-Key ungültig oder abgelaufen - in der Add-on-Konfiguration prüfen",
+                   403: "API-Key hat keine Berechtigung für dieses Modell",
+                   404: f"Modell {modell} unbekannt - in der Add-on-Konfiguration prüfen",
+                   429: "Zu viele Anfragen oder Guthaben aufgebraucht",
+                   529: "Claude ist gerade überlastet, nächster Versuch beim nächsten Abruf"}.get(
+            e.response.status_code, f"Anfrage abgelehnt ({e.response.status_code})")
+        log.warning("Claude-Anfrage fehlgeschlagen: %s", meldung)
+        db.setze_einstellung("ki_letzter_fehler", f"{db.jetzt_iso()}: {meldung}")
+        ki_nutzung.erfassen(zweck, modell, usage, len(eintraege), ok=False, meldung=meldung)
+        return {}
     except Exception as e:  # noqa: BLE001
         log.warning("Claude-Anfrage fehlgeschlagen: %s", e)
         db.setze_einstellung("ki_letzter_fehler", f"{db.jetzt_iso()}: {str(e)[:300]}")
