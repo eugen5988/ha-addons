@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.5.2
+
+- Nach einem erfolgreichen KI-Test verschwindet die alte Fehlermeldung sofort von der KI-Seite.
+
 ## 1.5.1
 
 - API-Key und Token werden ohne versehentlich eingefügte Leerzeichen oder Zeilenumbrüche verwendet.

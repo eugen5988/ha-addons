@@ -1135,7 +1135,7 @@ async function kiAnsicht() {
   unterseite("KI-Kategorisierung", `<div class="mehr-liste">
       <div class="zeile">Status<span class="rechts">${ki.aktiv ? "aktiv" : "aus (kein API-Key oder deaktiviert)"}</span></div>
       <div class="zeile">Modell<span class="rechts">${esc(ki.modell)}</span></div>
-      ${ki.letzter_fehler ? `<div class="zeile" style="display:block"><small style="color:var(--pruefen)">${esc(ki.letzter_fehler)}</small></div>` : ""}
+      ${ki.letzter_fehler ? `<div class="zeile" id="ki-fehler" style="display:block"><small style="color:var(--pruefen)">${esc(ki.letzter_fehler)}</small></div>` : ""}
     </div>
     <div class="abschnitt">Verbrauch</div>
     <div id="ki-verbrauch"></div>
@@ -1150,7 +1150,7 @@ async function kiAnsicht() {
   kiVerbrauch(nutzung);
   const neuLaden = async () => { try { kiVerbrauch(await api("ki/nutzung")); } catch (_) { /* egal */ } };
   $("#test").onclick = async () => {
-    try { const r = await api("ki/test", { method: "POST", body: { haendler: $("#testname").value } }); $("#ergebnis").innerHTML = `<div class="hinweis ok">${esc(r.haendler)} → <b style="color:inherit">${esc(r.kategorie)}</b>, „${esc(r.bezeichnung)}“, ${Math.round(r.sicherheit * 100)} % sicher</div>`; }
+    try { const r = await api("ki/test", { method: "POST", body: { haendler: $("#testname").value } }); $("#ki-fehler")?.remove(); metaLaden(); $("#ergebnis").innerHTML = `<div class="hinweis ok">${esc(r.haendler)} → <b style="color:inherit">${esc(r.kategorie)}</b>, „${esc(r.bezeichnung)}“, ${Math.round(r.sicherheit * 100)} % sicher</div>`; }
     catch (err) { $("#ergebnis").innerHTML = `<div class="hinweis">${esc(err.message)}</div>`; }
     neuLaden();
   };
