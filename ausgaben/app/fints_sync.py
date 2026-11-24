@@ -306,6 +306,10 @@ class Job(threading.Thread):
                 raise Abbruch("PIN fehlt")
             if not produkt_id():
                 raise Abbruch("FinTS-Produkt-ID fehlt (Mehr → Banken)")
+            # Fehlersuche: python-fints schreibt die Nachrichten (PIN ausgeblendet) ins Add-on-Protokoll
+            logging.getLogger("fints").setLevel(logging.DEBUG if db.einstellung("fints_protokoll") == "1" else logging.WARNING)
+            log.info("FinTS-Abruf %s: BLZ %s, URL %s, Anmeldename %s Zeichen, Produkt-ID %s Zeichen",
+                     bank["name"], bank["blz"], bank["url"], len(bank["login"] or ""), len(produkt_id()))
             Klasse = _client_klasse()
             f = Klasse(bank["blz"], bank["login"], pin, bank["url"], customer_id=bank["kunden_id"] or None,
                        product_id=produkt_id(), from_data=bank["zustand"])

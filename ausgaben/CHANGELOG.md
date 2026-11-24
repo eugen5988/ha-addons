@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.7.3
+
+- Banken: Schalter „Fehlersuche“ schreibt die Kommunikation mit der Bank ins Add-on-Protokoll (PIN ausgeblendet).
+
 ## 1.7.2
 
 - Banken: Lehnt der FinTS-Server eine Anfrage ab, zeigt die App jetzt die Antwort der Bank statt nur „Bad status code 400“.

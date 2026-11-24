@@ -643,13 +643,16 @@ def _bank_oder_404(bank_id):
 @app.get("/api/banken")
 def banken():
     return {"banken": fints_sync.alle_banken(), "vorlagen": fints_sync.VORLAGEN,
-            "produkt_id": fints_sync.produkt_id(), "umbuchung_begriffe": fints_sync.umbuchung_begriffe()}
+            "produkt_id": fints_sync.produkt_id(), "umbuchung_begriffe": fints_sync.umbuchung_begriffe(),
+            "protokoll": db.einstellung("fints_protokoll") == "1"}
 
 
 @app.put("/api/banken/einstellungen")
 def banken_einstellungen(d: dict = Body(...)):
     if "produkt_id" in d:
         db.setze_einstellung("fints_produkt_id", (d["produkt_id"] or "").strip())
+    if "protokoll" in d:
+        db.setze_einstellung("fints_protokoll", "1" if d["protokoll"] else "0")
     if "umbuchung_begriffe" in d:
         db.setze_einstellung("umbuchung_begriffe",
                              json.dumps([s.strip().lower() for s in d["umbuchung_begriffe"] if s.strip()]))

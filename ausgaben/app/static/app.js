@@ -1436,12 +1436,13 @@ async function bankenAnsicht() {
     ${fints.length || d.produkt_id ? `<div class="abschnitt">DKB, comdirect und andere (FinTS)</div>
     <label class="feld"><span>FinTS-Produkt-ID (aus der Registrierungs-E-Mail)</span><input id="b-pid" value="${esc(d.produkt_id)}" autocomplete="off" autocapitalize="characters"></label>
     <label class="feld"><span>Umbuchungen erkennen an (Komma-getrennt, z. B. Empfänger eigener Konten)</span><textarea id="b-umb">${esc(d.umbuchung_begriffe.join(", "))}</textarea></label>
+    ${checkZeile("b-protokoll", d.protokoll, "Fehlersuche: Bank-Kommunikation ins Add-on-Protokoll schreiben (PIN wird ausgeblendet)")}
     <div class="knopfreihe"><button class="knopf zweit" id="b-speichern">Einstellungen sichern</button></div>
     <p class="leise" style="font-size:13px;margin:12px 4px">Überweisungen an eigene Konten (gleiche IBAN wie ein verbundenes Konto) und Buchungen mit diesen Begriffen gelten als Umbuchung und zählen nicht als Ausgabe. Gutschriften wie Gehalt werden ebenfalls ausgelassen.</p>` : ""}`);
   $("#b-neu").onclick = () => bankHinzufuegen();
   $("#b-tr")?.addEventListener("click", trAnsicht);
   $("#b-speichern")?.addEventListener("click", async () => {
-    await api("banken/einstellungen", { method: "PUT", body: { produkt_id: $("#b-pid").value, umbuchung_begriffe: $("#b-umb").value.split(",") } });
+    await api("banken/einstellungen", { method: "PUT", body: { produkt_id: $("#b-pid").value, umbuchung_begriffe: $("#b-umb").value.split(","), protokoll: $("#b-protokoll").checked } });
     toast("Gesichert"); bankenAnsicht();
   });
   $$("[data-b]").forEach((x) => (x.onclick = () => bankDetail(+x.dataset.b)));
