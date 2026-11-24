@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.10.0
+
+- Offline erfasste Einträge und Kassenbon-Fotos, die noch auf Übertragung warten, stehen jetzt oben in „Einträge“ und in der Übersicht (Abschnitt „Noch nicht übertragen“, Marke „wartet“).
+- Wartende Einträge lassen sich per Wischen nach links verwerfen.
+
 ## 1.9.1
 
 - Wischen zum Löschen: Der rote Knopf füllt nur noch die freigelegte Fläche und scheint nicht mehr unter der Zeile durch. „Löschen“ steht mittig im Knopf.

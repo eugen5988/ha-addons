@@ -126,6 +126,12 @@ function leisteZeigen() {
   el.hidden = !teile.length;
   document.documentElement.classList.toggle("mit-offline-leiste", !!teile.length);
 }
+function wartendeAktualisieren() {
+  if (S.tab === "eintraege" && $("#liste")) {
+    const s = S.suche;
+    if (!s.q && !s.kategorie && !s.konto && !s.pruefen && !s.von && !s.bis) wartendeEinbauen($("#liste"));
+  } else if (S.tab === "uebersicht" && $("#letzte")) wartendeEinbauen($("#letzte"));
+}
 function inWarteschlange(x) {
   const l = wsLesen(); l.push({ ...x, zeit: Date.now() });
   try { wsSchreiben(l); } catch (_) { throw new Error("Der Speicher auf dem Gerät ist voll, der Eintrag wurde nicht gespeichert"); }
@@ -445,6 +451,7 @@ async function uebersicht() {
   const letzte = $("#letzte");
   letzte.innerHTML = `<div class="abschnitt" style="display:flex;justify-content:space-between"><span>${z.einheit === "tag" ? "Einträge" : "Letzte Einträge"}</span>${liste.anzahl > liste.eintraege.length ? `<button class="knopf zweit klein" id="alle">Alle ${liste.anzahl} zeigen</button>` : ""}</div>` + eintragsListe(liste.eintraege, z.einheit !== "tag");
   listeKlicks(letzte, liste.eintraege);
+  wartendeEinbauen(letzte);
   $("#alle")?.addEventListener("click", () => {
     Object.assign(S.suche, { q: "", kategorie: S.bandAuswahl || "", konto: "", pruefen: false, von: z.von, bis: z.bis });
     tabWechseln("eintraege");
@@ -484,6 +491,40 @@ function eintragsListe(eintraege, nachTag = true) {
   }
   return gruppen.map((g) => `<div class="tag-kopf"><span>${tagLabel(g.tag)}</span><span class="zahl">${geld(g.liste.reduce((s, e) => s + (eigen(e) || 0), 0))}</span></div>
     <div class="liste">${g.liste.map(eintragZeile).join("")}</div>`).join("");
+}
+// Offline erfasste Einträge, die noch auf Übertragung warten (oben in den Listen)
+function wartendeListe() {
+  const l = wsLesen();
+  if (!l.length) return "";
+  const zeilen = l.map((x) => {
+    const d = x.daten || {};
+    const k = x.art === "eintrag" ? kat(d.kategorie_id) : null;
+    const zeit = x.art === "eintrag" ? d.datum : x.datum;
+    const wann = zeit ? ausIso(zeit).toLocaleDateString("de-DE", { day: "numeric", month: "short" }) + (zeit.slice(11, 16) && zeit.slice(11, 16) !== "00:00" ? ", " + zeit.slice(11, 16) : "") : "";
+    const titel = x.art === "eintrag" ? (d.bezeichnung || k?.name || "Ohne Bezeichnung") : "Kassenbon-Foto";
+    const wert = x.art === "eintrag" ? (d.betrag < 0 ? "+" + geld(-d.betrag, d.waehrung) : geld(d.betrag, d.waehrung)) : "–";
+    return `<div class="wisch" data-ref="${esc(String(x.zeit))}"><button class="wisch-loeschen" tabindex="-1"><span>Löschen</span></button><button class="eintrag wartend" data-ref="${esc(String(x.zeit))}">
+      <span class="ic" style="${icFarbe(k?.farbe || "#9AA3AE")}">${esc(x.art === "beleg" ? "🧾" : k?.icon || "❔")}</span>
+      <span style="min-width:0"><span class="titel">${esc(titel)}<span class="marke wartet">wartet</span></span>
+        <span class="unter">${esc([wann, k?.name, x.art === "beleg" ? "wird danach ausgelesen" : ""].filter(Boolean).join(", "))}</span></span>
+      <span class="wert zahl">${esc(wert)}</span></button></div>`;
+  }).join("");
+  return `<div class="tag-kopf"><span>Noch nicht übertragen</span><span class="zahl">${l.length}</span></div><div class="liste">${zeilen}</div>`;
+}
+function wartendeEinbauen(container) {
+  if (!container) return;
+  container.querySelector(".wartend-block")?.remove();
+  const html = wartendeListe();
+  if (!html) return;
+  const div = document.createElement("div");
+  div.className = "wartend-block"; div.innerHTML = html;
+  container.prepend(div);
+  $$(".eintrag", div).forEach((b) => (b.onclick = () => {
+    const w = b.closest(".wisch");
+    if (w.dataset.gewischt || w.classList.contains("offen")) { wischSchliessen(w); return; }
+    toast("Wird automatisch übertragen, sobald wieder Verbindung besteht. Zum Verwerfen nach links wischen.");
+  }));
+  wischenAktivieren(div);
 }
 function listeKlicks(container, eintraege) {
   $$(".eintrag", container).forEach((b) => (b.onclick = () => {
@@ -547,8 +588,16 @@ function wischenAktivieren(container) {
   });
 }
 async function wischLoeschen(w) {
-  const zeile = w.querySelector(".eintrag");
   wischSetzen(w, -w.offsetWidth);
+  if (w.dataset.ref) { // noch nicht übertragen: nur aus der Warteschlange nehmen
+    wsSchreiben(wsLesen().filter((x) => String(x.zeit) !== w.dataset.ref));
+    w.style.height = w.offsetHeight + "px";
+    requestAnimationFrame(() => w.classList.add("weg"));
+    wischOffen = null; leisteZeigen();
+    toast("Offline-Eintrag verworfen");
+    setTimeout(() => { const b = w.closest(".wartend-block"); if (b && !wsLesen().length) b.remove(); }, 320);
+    return;
+  }
   try {
     await api(`eintraege/${w.dataset.id}`, { method: "DELETE" });
   } catch (err) {
@@ -621,6 +670,7 @@ async function listeLaden() {
   $("#summe").textContent = geld(r.summe);
   $("#liste").innerHTML = eintragsListe(S.liste.eintraege, s.sortierung !== "betrag");
   listeKlicks($("#liste"), S.liste.eintraege);
+  if (!s.q && !s.kategorie && !s.konto && !s.pruefen && !s.von && !s.bis) wartendeEinbauen($("#liste"));
   $("#mehr-laden").hidden = S.liste.fertig;
 }
 function zeitraumWaehlen() {
@@ -815,6 +865,7 @@ function erfassen(e = null) {
             inWarteschlange({ art: "beleg", ref: neueRef(), bild, datum: $("#datum").value, konto_id: +$("#konto").value });
             sheetSchliessen();
             toast("Offline: Foto gespeichert. Es wird eingelesen und unter „Prüfen“ angelegt, sobald Verbindung besteht");
+            wartendeAktualisieren();
             return;
           } catch (e2) { err = e2; }
         }
@@ -910,6 +961,7 @@ function erfassen(e = null) {
           inWarteschlange({ art: "eintrag", daten });
           sheetSchliessen();
           toast("Offline gespeichert – wird übertragen, sobald wieder Verbindung besteht");
+          wartendeAktualisieren();
           return;
         }
         localStorage.setItem("ausgaben_waehrung", daten.waehrung);

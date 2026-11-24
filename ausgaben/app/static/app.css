@@ -129,6 +129,8 @@ button { cursor: pointer; }
 .marke { display: inline-block; font-size: 11px; padding: 1px 6px; border-radius: 6px; margin-left: 4px;
   vertical-align: 1px; font-weight: 600; }
 .marke.pruefen { background: var(--pruefen-zart); color: var(--pruefen); }
+.marke.wartet { background: #F6E3D9; color: #B4552D; }
+.eintrag.wartend .wert { color: var(--leise); }
 .marke.auto { background: var(--akzent-zart); color: var(--akzent); }
 
 .hinweis { display: flex; align-items: center; gap: 12px; background: var(--pruefen-zart); color: var(--tinte);
