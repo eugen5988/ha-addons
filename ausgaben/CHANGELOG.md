@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.7.2
+
+- Banken: Lehnt der FinTS-Server eine Anfrage ab, zeigt die App jetzt die Antwort der Bank statt nur „Bad status code 400“.
+- FinTS-Produkt-ID wird ohne versehentlich mitkopierte Leerzeichen oder Zeilenumbrüche verwendet.
+
 ## 1.7.1
 
 - Eigenanteil: Eine neue oder geänderte Regel gilt ab dem Datum des Eintrags; frühere Einträge behalten

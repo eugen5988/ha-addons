@@ -97,7 +97,43 @@ def _client_klasse():
     if ClientKlasse is not None:
         return ClientKlasse
     from fints.client import FinTS3PinTanClient
+    _verbindung_erweitern()
     return FinTS3PinTanClient
+
+
+def _verbindung_erweitern():
+    """python-fints verwirft bei HTTP-Fehlern die Antwort der Bank. Fuer die Fehlersuche
+    haengen wir den Anfang der Antwort an die Meldung an."""
+    from fints import connection
+    if getattr(connection.FinTSHTTPSConnection, "_ausgaben_erweitert", False):
+        return
+    original = connection.FinTSHTTPSConnection.send
+
+    def send(self, msg):
+        try:
+            return original(self, msg)
+        except connection.FinTSConnectionError as e:
+            if "Bad status code" not in str(e):
+                raise
+            try:
+                import base64
+                r = self.session.post(self.url, data=base64.b64encode(msg.render_bytes()),
+                                      headers={"Content-Type": "text/plain"}, timeout=30)
+                text = r.text
+                try:
+                    roh = base64.b64decode(text.strip(), validate=True).decode("iso-8859-1")
+                    if "HNHBK" in roh or "HIRMG" in roh:
+                        text = roh
+                except Exception:  # noqa: BLE001
+                    pass
+                text = " ".join(text.split())[:300]
+            except Exception as e2:  # noqa: BLE001
+                text = str(e2)[:200]
+            log.warning("FinTS-Server antwortet mit Fehler: %s | %s", e, text)
+            raise connection.FinTSConnectionError(f"{e}: {text}") from e
+
+    connection.FinTSHTTPSConnection.send = send
+    connection.FinTSHTTPSConnection._ausgaben_erweitert = True
 
 
 def _need_tan_klasse():
@@ -110,7 +146,8 @@ def _need_tan_klasse():
 # ---------------------------------------------------------------- Einstellungen
 
 def produkt_id():
-    return (db.einstellung("fints_produkt_id") or "").strip()
+    # Beim Kopieren aus der E-Mail rutschen gern Leerzeichen oder Zeilenumbrueche hinein
+    return "".join((db.einstellung("fints_produkt_id") or "").split()).upper()
 
 
 def umbuchung_begriffe():
@@ -410,6 +447,8 @@ def _fehlertext(e):
     name = e.__class__.__name__
     if "PIN" in name or "9910" in t or "9931" in t or "9942" in t:
         return "Anmeldung abgelehnt - Anmeldename oder PIN prüfen"
+    if "Bad status code" in t:
+        return f"Bank lehnt die Anfrage ab ({t[:350]})"
     if "Connection" in name or "Max retries" in t or "Name or service" in t:
         return f"Bank nicht erreichbar ({t[:150]})"
     if "9078" in t or "Produkt" in t or "product" in t.lower():
