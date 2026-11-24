@@ -144,7 +144,8 @@ def meta():
         "tr": tr_sync.konfig(),
         "einstellungen": {"mehrdeutig": kategorisierung.mehrdeutige_muster(), "wohnort": db.einstellung("ki_wohnort") or ""},
         "anzahl_gesamt": db.q1("SELECT COUNT(*) n FROM eintraege")["n"],
-        "darstellung": {"design": db.einstellung("design", "salbei"), "modus": db.einstellung("design_modus", "auto")},
+        "darstellung": {"design": db.einstellung("design", "salbei"), "modus": db.einstellung("design_modus", "auto"),
+                        "startseite": db.einstellung("startseite", "uebersicht")},
         "banken": {"anzahl": db.q1("SELECT COUNT(*) n FROM banken")["n"],
                    "offen_nachholen": db.q1("SELECT COUNT(*) n FROM bank_nachholen WHERE status='offen'")["n"],
                    "fehler": [r["name"] for r in db.q("SELECT name FROM banken WHERE meldung<>''")]},
@@ -462,6 +463,8 @@ def einstellungen_speichern(d: dict = Body(...)):
         db.setze_einstellung("design", re.sub(r"[^a-z0-9_-]", "", str(d["design"]).lower())[:30] or "salbei")
     if d.get("design_modus") in ("auto", "hell", "dunkel"):
         db.setze_einstellung("design_modus", d["design_modus"])
+    if d.get("startseite") in ("uebersicht", "eintraege", "verlauf"):
+        db.setze_einstellung("startseite", d["startseite"])
     if "wohnort" in d:
         db.setze_einstellung("ki_wohnort", str(d["wohnort"] or "").strip()[:60])
     return meta()

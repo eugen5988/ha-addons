@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.6.0
+
+- Startseite wählbar: Übersicht, Einträge oder Verlauf (Mehr → Darstellung → Startseite).
+
 ## 1.5.2
 
 - Nach einem erfolgreichen KI-Test verschwindet die alte Fehlermeldung sofort von der KI-Seite.

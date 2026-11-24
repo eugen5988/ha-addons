@@ -120,6 +120,19 @@ function farbpunkte(id) {
   const d = DESIGNS[id] || DESIGNS.salbei;
   return `<span class="farbpunkte"><i style="background:${d.hell.akzent}"></i><i style="background:${d.dunkel.akzent}"></i><i style="background:${d.hell.pruefen}"></i></span>`;
 }
+const STARTSEITEN = { uebersicht: "Übersicht", eintraege: "Einträge", verlauf: "Verlauf" };
+function startseiteSheet() {
+  const aktuell = S.meta.darstellung.startseite || "uebersicht";
+  sheetOeffnen(`<div class="griff"></div><div class="sheet-kopf"><span style="width:60px"></span><h3>Startseite</h3><button data-zu>Fertig</button></div>
+    <p class="leise" style="font-size:14px;margin:4px 4px 10px">Diese Seite erscheint beim Öffnen der App, auf allen Geräten.</p>
+    <div class="mehr-liste">${Object.entries(STARTSEITEN).map(([id, name]) => `<button data-start="${id}">${esc(name)}<span class="rechts">${id === aktuell ? "✓" : ""}</span></button>`).join("")}</div>`);
+  $$("[data-start]").forEach((b) => (b.onclick = async () => {
+    try { S.meta = await api("einstellungen", { method: "PUT", body: { startseite: b.dataset.start } }); }
+    catch (err) { toast(err.message); return; }
+    sheetSchliessen(); toast(`Startseite: ${STARTSEITEN[b.dataset.start]}`); mehrAnsicht();
+  }));
+}
+
 function designAnsicht() {
   const zeichnen = () => {
     unterseite("Design", `
@@ -756,6 +769,7 @@ async function mehrAnsicht() {
     <div class="abschnitt">Darstellung</div>
     <div class="mehr-liste">
       <button id="m-design"><span class="ic">🎨</span>Design<span class="rechts">${esc((DESIGNS[S.design.id] || DESIGNS.salbei).name)} · ${esc(MODI.find(([x]) => x === S.design.modus)[1])}${farbpunkte(S.design.id)}</span></button>
+      <button id="m-start"><span class="ic">🏠</span>Startseite<span class="rechts">${esc(STARTSEITEN[S.meta.darstellung.startseite] || "Übersicht")}</span></button>
     </div>
     <div class="abschnitt">Verwaltung</div>
     <div class="mehr-liste">
@@ -769,6 +783,7 @@ async function mehrAnsicht() {
   $("#m-dup").onclick = doppelteAnsicht;
   $("#m-reset").onclick = zuruecksetzenSheet;
   $("#m-design").onclick = designAnsicht;
+  $("#m-start").onclick = startseiteSheet;
   $("#m-pruefen").onclick = pruefenAnsicht;
   $("#m-ki").onclick = kiAnsicht;
   $("#m-banken").onclick = bankenAnsicht;
@@ -1671,7 +1686,7 @@ async function start() {
     $$(".tabs [data-tab]").forEach((x) => x.classList.toggle("aktiv", x.dataset.tab === "mehr"));
     wiederkehrendAnsicht();
   }
-  else tabWechseln(ANSICHTEN[hash] ? hash : "uebersicht");
+  else tabWechseln(ANSICHTEN[hash] ? hash : (S.meta.darstellung.startseite || "uebersicht"));
 }
 document.addEventListener("visibilitychange", async () => {
   if (document.visibilityState === "visible" && $("#sheet").hidden && S.meta) { await metaLaden(); neuZeichnen(); }
