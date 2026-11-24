@@ -466,7 +466,7 @@ function eintragZeile(e, mitDatum = false) {
   const gut = e.betrag < 0;
   const datumText = mitDatum ? ausIso(e.datum).toLocaleDateString("de-DE", { day: "numeric", month: "short", year: "2-digit" }) : "";
   const unter = [datumText, k ? k.name : "Ohne Kategorie", e.konto && e.konto !== "Altdaten (Next)" ? e.konto : "", e.datum.slice(11, 16) !== "00:00" ? e.datum.slice(11, 16) : ""].filter(Boolean).join(", ");
-  return `<div class="wisch" data-id="${e.id}"><button class="wisch-loeschen" tabindex="-1">Löschen</button><button class="eintrag" data-id="${e.id}">
+  return `<div class="wisch" data-id="${e.id}"><button class="wisch-loeschen" tabindex="-1"><span>Löschen</span></button><button class="eintrag" data-id="${e.id}">
     <span class="ic" style="${icFarbe(k?.farbe || "#9AA3AE")}">${esc(k?.icon || "❔")}</span>
     <span style="min-width:0"><span class="titel">${esc(e.bezeichnung || e.haendler_roh || "Ohne Bezeichnung")}${e.pruefen ? '<span class="marke pruefen">prüfen</span>' : ""}</span>
       <span class="unter">${esc(unter)}${e.notiz ? " – " + esc(e.notiz) : ""}</span></span>
@@ -497,9 +497,13 @@ function listeKlicks(container, eintraege) {
 // Wischen nach links zum Löschen (wie in iOS): kurz wischen zeigt „Löschen“, ganz durchwischen löscht sofort.
 const WISCH_BREITE = 88;
 let wischOffen = null;
+function wischSetzen(w, x) {
+  w.querySelector(".eintrag").style.transform = x ? `translateX(${x}px)` : "";
+  w.querySelector(".wisch-loeschen").style.width = Math.max(0, -x) + "px";
+}
 function wischSchliessen(w) {
   if (!w) return;
-  w.querySelector(".eintrag").style.transform = "";
+  wischSetzen(w, 0);
   w.classList.remove("offen", "voll");
   if (wischOffen === w) wischOffen = null;
 }
@@ -513,6 +517,7 @@ function wischenAktivieren(container) {
       basis = w.classList.contains("offen") ? -WISCH_BREITE : 0;
       if (wischOffen && wischOffen !== w) wischSchliessen(wischOffen);
       zeile.style.transition = "none";
+      w.querySelector(".wisch-loeschen").style.transition = "none";
     }, { passive: true });
     zeile.addEventListener("touchmove", (ev) => {
       const t = ev.touches[0], mx = t.clientX - x0, my = t.clientY - y0;
@@ -523,16 +528,17 @@ function wischenAktivieren(container) {
       if (richtung !== "h") return;
       ev.preventDefault();
       dx = Math.min(0, basis + mx);
-      zeile.style.transform = `translateX(${dx}px)`;
+      wischSetzen(w, dx);
       w.classList.toggle("voll", dx < -w.offsetWidth * 0.6);
     }, { passive: false });
     const ende = () => {
       zeile.style.transition = "";
+      w.querySelector(".wisch-loeschen").style.transition = "";
       if (richtung !== "h") return;
       w.dataset.gewischt = "1";
       setTimeout(() => delete w.dataset.gewischt, 80);
       if (dx < -w.offsetWidth * 0.6) wischLoeschen(w);
-      else if (dx < -WISCH_BREITE / 2) { zeile.style.transform = `translateX(${-WISCH_BREITE}px)`; w.classList.add("offen"); wischOffen = w; }
+      else if (dx < -WISCH_BREITE / 2) { wischSetzen(w, -WISCH_BREITE); w.classList.add("offen"); wischOffen = w; }
       else wischSchliessen(w);
     };
     zeile.addEventListener("touchend", ende);
@@ -542,7 +548,7 @@ function wischenAktivieren(container) {
 }
 async function wischLoeschen(w) {
   const zeile = w.querySelector(".eintrag");
-  zeile.style.transform = `translateX(-${w.offsetWidth}px)`;
+  wischSetzen(w, -w.offsetWidth);
   try {
     await api(`eintraege/${w.dataset.id}`, { method: "DELETE" });
   } catch (err) {

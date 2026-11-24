@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.9.1
+
+- Wischen zum Löschen: Der rote Knopf füllt nur noch die freigelegte Fläche und scheint nicht mehr unter der Zeile durch. „Löschen“ steht mittig im Knopf.
+
 ## 1.9.0
 
 - Einträge per Wischen nach links löschen, wie in iOS: kurz wischen zeigt „Löschen“, ganz durchwischen

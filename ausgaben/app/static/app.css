@@ -112,9 +112,12 @@ button { cursor: pointer; }
   border: 0; background: none; padding: 10px 14px; text-align: left; }
 .eintrag + .eintrag, .wisch + .wisch { border-top: 1px solid var(--linie); }
 .wisch { position: relative; overflow: hidden; }
-.wisch .eintrag { position: relative; z-index: 1; background: var(--flaeche); transition: transform .22s ease; touch-action: pan-y; }
-.wisch-loeschen { position: absolute; inset: 0 0 0 auto; width: 100%; border: 0; padding: 0 22px; text-align: right;
-  background: #D93A2F; color: #fff; font: inherit; font-size: 15px; font-weight: 600; }
+.wisch .eintrag { position: relative; z-index: 1; margin: 0; border-radius: 0; -webkit-appearance: none; background: var(--flaeche); transition: transform .22s ease; touch-action: pan-y; }
+.wisch-loeschen { position: absolute; top: 0; right: 0; bottom: 0; width: 0; overflow: hidden; border: 0; padding: 0;
+  margin: 0; border-radius: 0; -webkit-appearance: none; display: flex; align-items: center; justify-content: flex-start;
+  background: #D93A2F; color: #fff; font: inherit; font-size: 15px; font-weight: 600; transition: width .22s ease; }
+.wisch-loeschen span { flex: 0 0 88px; text-align: center; }
+.wisch.voll .wisch-loeschen span { flex-basis: auto; padding-left: 22px; }
 .wisch.weg { height: 0 !important; transition: height .28s ease; border-top-color: transparent; }
 .eintrag .ic { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; font-size: 18px; }
 .eintrag .titel, .eintrag .unter { display: block; }
