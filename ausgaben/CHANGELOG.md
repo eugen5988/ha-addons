@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.11.1
+
+- Ziehen zum Aktualisieren löst erst bei deutlich längerem Zug aus (Schwelle rund 60 % länger).
+
 ## 1.11.0
 
 - Ziehen zum Aktualisieren: In Übersicht, Einträge, Verlauf und Prüfen oben nach unten ziehen und loslassen. Trade Republic wird sofort abgerufen, Banken mit gespeicherter PIN im Hintergrund; das Ergebnis erscheint als Meldung, auch wenn eine Freigabe in der Banking-App nötig ist.

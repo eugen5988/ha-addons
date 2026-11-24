@@ -1996,7 +1996,7 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#she
 
 // ---------------------------------------------------------------- Ziehen zum Aktualisieren
 // Wie in iOS-Apps: oben ganz nach unten ziehen, loslassen ruft Trade Republic und die Banken ab.
-const ZIEH_SCHWELLE = 72;
+const ZIEH_SCHWELLE = 115;
 // Fühlbares Feedback. iOS-Safari kennt navigator.vibrate nicht; ab iOS 18 löst das Umschalten
 // eines Schalters (<input type=checkbox switch>) aber das System-Haptik-Feedback aus.
 function haptik() {
@@ -2058,7 +2058,7 @@ function ziehenAktivieren() {
     aktiv = false;
     setTimeout(() => (ziehtGerade = false), 50);
     if (zug >= ZIEH_SCHWELLE) {
-      setzen(ZIEH_SCHWELLE * 0.75, true);
+      setzen(60, true);
       const el = ziehenAnzeige(); el.classList.add("laedt");
       allesAktualisieren().finally(() => { el.classList.remove("laedt"); setzen(0, true); });
     } else setzen(0, true);
