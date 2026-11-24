@@ -248,6 +248,9 @@ button { cursor: pointer; }
   display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 11.5px; line-height: 1.2;
   min-height: 64px; text-align: center; }
 .katgitter button span { font-size: 21px; }
+.katgitter button.kat-neu { border: 1.5px dashed var(--linie); background: transparent; color: var(--leise); }
+.katgitter button.kat-neu span { font-size: 21px; color: var(--akzent); }
+.kat-neu-form { background: var(--flaeche); border-radius: 12px; padding: 10px 12px 2px; margin: 0 0 8px; }
 .katgitter button.aktiv { border-color: var(--tinte); background: var(--flaeche-2); font-weight: 600; }
 
 .vorschlagsliste { background: var(--flaeche); border-radius: 11px; margin-top: 4px; overflow: hidden; }

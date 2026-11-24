@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.12.0
+
+- Neue Kategorie direkt beim Erfassen anlegen: Kachel „＋ Neue Kategorie“ am Ende des Kategorienrasters (Symbol und Name), die neue Kategorie ist danach gleich ausgewählt. Farbe und KI-Beschreibung lassen sich später unter Mehr → Kategorien ergänzen.
+
 ## 1.11.1
 
 - Ziehen zum Aktualisieren löst erst bei deutlich längerem Zug aus (Schwelle rund 60 % länger).

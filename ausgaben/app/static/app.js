@@ -761,7 +761,12 @@ function erfassen(e = null) {
     <div class="vorzeichen"><div class="segment" style="width:240px"><button data-v="aus" class="${erstattung ? "" : "aktiv"}">Ausgabe</button><button data-v="ein" class="${erstattung ? "aktiv" : ""}">Erstattung</button></div></div>
     <label class="feld"><span>Bezeichnung</span><input id="bezeichnung" autocomplete="off" value="${esc(d.bezeichnung)}" placeholder="z. B. Bäcker, Tanken, Geschenk"></label>
     <div id="vorschlaege"></div>
-    <div class="katgitter" id="katgitter">${kats.map((k) => `<button data-k="${k.id}" class="${k.id === d.kategorie_id ? "aktiv" : ""}" style="${k.id === d.kategorie_id ? "" : ""}"><span>${esc(k.icon)}</span>${esc(k.name)}</button>`).join("")}</div>
+    <div class="katgitter" id="katgitter">${kats.map((k) => `<button data-k="${k.id}" class="${k.id === d.kategorie_id ? "aktiv" : ""}" style="${k.id === d.kategorie_id ? "" : ""}"><span>${esc(k.icon)}</span>${esc(k.name)}</button>`).join("")}<button class="kat-neu" id="kat-neu" type="button"><span>＋</span>Neue Kategorie</button></div>
+    <div class="kat-neu-form" id="kat-neu-form" hidden>
+      <div class="zwei" style="grid-template-columns:64px 1fr"><label class="feld"><span>Symbol</span><input id="kn-icon" value="🏷️" style="text-align:center;font-size:21px" autocomplete="off"></label>
+        <label class="feld"><span>Name</span><input id="kn-name" autocomplete="off" placeholder="z. B. Baumarkt"></label></div>
+      <div class="knopfreihe"><button class="knopf zweit" id="kn-ab" type="button">Abbrechen</button><button class="knopf" id="kn-ok" type="button">Anlegen</button></div>
+    </div>
     <div class="zwei"><label class="feld"><span>Datum und Uhrzeit</span><input id="datum" type="datetime-local" value="${esc(d.datum.slice(0, 16))}"></label>
       <label class="feld"><span>Konto</span><select id="konto">${S.meta.konten.filter((k) => !k.archiviert || k.id === d.konto_id).map((k) => `<option value="${k.id}" ${k.id === d.konto_id ? "selected" : ""}>${esc(k.icon)} ${esc(k.name)}</option>`).join("")}</select></label></div>
     <label class="feld"><span>Notiz</span><input id="notiz" value="${esc(d.notiz || "")}" placeholder="optional"></label>
@@ -778,10 +783,37 @@ function erfassen(e = null) {
   let vorzeichen = erstattung ? -1 : 1;
   const betragFeld = $("#betrag");
   if (neu) setTimeout(() => betragFeld.focus(), 280);
-  $$("#katgitter button").forEach((b) => (b.onclick = () => {
+  const katWaehlen = (b) => {
     katId = +b.dataset.k;
     $$("#katgitter button").forEach((x) => x.classList.toggle("aktiv", x === b));
-  }));
+  };
+  $$("#katgitter button[data-k]").forEach((b) => (b.onclick = () => katWaehlen(b)));
+  // Neue Kategorie direkt hier anlegen, ohne die Erfassung zu verlassen
+  const knForm = $("#kat-neu-form");
+  $("#kat-neu").onclick = () => {
+    knForm.hidden = !knForm.hidden;
+    if (!knForm.hidden) { setTimeout(() => $("#kn-name").focus(), 50); }
+  };
+  $("#kn-ab").onclick = () => (knForm.hidden = true);
+  $("#kn-ok").onclick = async () => {
+    const name = $("#kn-name").value.trim();
+    if (!name) { toast("Bitte einen Namen eingeben"); return; }
+    const belegt = new Set(S.meta.kategorien.map((k) => k.farbe));
+    const farbe = FARBEN.find((f) => !belegt.has(f)) || FARBEN[S.meta.kategorien.length % FARBEN.length];
+    $("#kn-ok").disabled = true;
+    try {
+      const k = await api("kategorien", { method: "POST", body: { name, icon: $("#kn-icon").value.trim() || "🏷️", farbe } });
+      try { await metaLaden(); } catch (_) { S.meta.kategorien.push({ ...k, anzahl: 0 }); }
+      const b = document.createElement("button");
+      b.dataset.k = k.id; b.innerHTML = `<span>${esc(k.icon)}</span>${esc(k.name)}`;
+      b.onclick = () => katWaehlen(b);
+      $("#kat-neu").before(b); katWaehlen(b);
+      knForm.hidden = true; $("#kn-icon").value = "🏷️";
+      toast(`Kategorie „${k.name}“ angelegt`);
+    } catch (err) {
+      toast(err.offline ? "Neue Kategorien gehen nur mit Verbindung" : err.message);
+    } finally { $("#kn-ok").disabled = false; }
+  };
   $$(".vorzeichen button").forEach((b) => (b.onclick = () => {
     vorzeichen = b.dataset.v === "ein" ? -1 : 1;
     $$(".vorzeichen button").forEach((x) => x.classList.toggle("aktiv", x === b));
