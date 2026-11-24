@@ -339,3 +339,14 @@ details.erweitert[open] summary::before { transform: rotate(90deg); }
 .ki-kachel b { display: block; font-size: 19px; margin: 2px 0; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .anteil-info { font-size: 13px; color: var(--leise); margin: -4px 4px 8px; min-height: 0; }
 .anteil-info:empty { display: none; }
+#offline-leiste { position: fixed; z-index: 40; left: 50%; transform: translateX(-50%);
+  top: calc(env(safe-area-inset-top, 0px) + 6px); max-width: calc(100% - 24px);
+  padding: 6px 14px; border: 0; border-radius: 999px; font: inherit; font-size: 13px; font-weight: 600;
+  background: var(--pruefen-zart); color: var(--pruefen); box-shadow: 0 2px 10px rgba(0,0,0,.12);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+#offline-leiste[hidden] { display: none; }
+.anleitung { margin: 0 4px 8px; padding-left: 20px; font-size: 14.5px; line-height: 1.45; }
+.anleitung li { margin-bottom: 12px; }
+.anleitung .knopfreihe { margin-top: 8px; }
+a.knopf { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
+html.mit-offline-leiste #ansicht { margin-top: 30px; }

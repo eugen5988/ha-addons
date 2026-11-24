@@ -1,5 +1,5 @@
 name: Ausgaben
-version: "1.7.3"
+version: "1.8.0"
 slug: ausgaben
 description: Haushaltsbuch mit automatischer Erfassung (Trade Republic, DKB, comdirect), Kassenbon-Scan und KI-Kategorisierung
 url: https://github.com/eugen5988/ha-addons/tree/main/ausgaben
@@ -16,8 +16,10 @@ panel_title: Ausgaben
 homeassistant_api: true
 ports:
   8099/tcp: 8199
+  8443/tcp: 8443
 ports_description:
-  8099/tcp: Direkter Zugriff fuer die iPhone-Web-App (optional, nur mit Zugriffs-Token)
+  8099/tcp: Direkter Zugriff fuer die iPhone-Web-App per HTTP (nur mit Zugriffs-Token)
+  8443/tcp: Web-App per HTTPS mit eigenem Zertifikat, noetig fuer den Offline-Betrieb
 map:
   - type: homeassistant_config
     read_only: false

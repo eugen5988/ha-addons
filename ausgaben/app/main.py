@@ -13,7 +13,7 @@ from fastapi import Body, FastAPI, File, Form, HTTPException, Request, UploadFil
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
-from . import anteile, auswertung, beleg, db, export, fints_sync, kategorisierung, ki_nutzung, next_import, tr_sync, waehrung
+from . import anteile, auswertung, beleg, db, tls, export, fints_sync, kategorisierung, ki_nutzung, next_import, tr_sync, waehrung
 from .einstellungen import optionen
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -110,6 +110,8 @@ async def zugriff(request: Request, call_next):
     pfad = request.url.path
     offen = not pfad.startswith("/api/") or pfad == "/api/auth"
     ingress = request.client and request.client.host == INGRESS_IP
+    if not ingress and request.url.hostname:
+        tls.adresse_lernen(request.url.hostname)
     if not offen and not ingress:
         token = optionen().get("zugriffs_token") or ""
         mitgegeben = request.headers.get("x-ausgaben-token") or request.cookies.get("ausgaben_token") or ""
@@ -247,6 +249,11 @@ def anteil_loeschen(rid: int, rueckwirkend: bool = False):
 
 @app.post("/api/eintraege")
 def eintrag_anlegen(d: dict = Body(...)):
+    ref = str(d.get("client_ref") or "")[:64]
+    if ref:  # Offline-Warteschlange: doppelt gesendete Eintraege nicht doppelt anlegen
+        vorhanden = db.q1("SELECT id FROM eintraege WHERE quelle_ref=?", ("app:" + ref,))
+        if vorhanden:
+            return _eintrag_laden(vorhanden["id"])
     roh, anteil = d, _anteil_lesen(d)
     d = _validieren({k: d.get(k) for k in FELDER + ("kurs",) if k in d})
     if d.get("kurs"):
@@ -255,10 +262,11 @@ def eintrag_anlegen(d: dict = Body(...)):
     jetzt = db.jetzt_iso()
     eid, _ = db.x(
         "INSERT INTO eintraege(datum, betrag, waehrung, kurs, betrag_eur, kategorie_id, bezeichnung, notiz, "
-        "konto_id, quelle, pruefen, kategorisiert_durch, erstellt, geaendert) "
-        "VALUES (?,?,?,?,?,?,?,?,?,'manuell',0,'nutzer',?,?)",
+        "konto_id, quelle, quelle_ref, pruefen, kategorisiert_durch, erstellt, geaendert) "
+        "VALUES (?,?,?,?,?,?,?,?,?,'manuell',?,?,'nutzer',?,?)",
         (d["datum"], d["betrag"], d["waehrung"], d["kurs"], d["betrag_eur"], d.get("kategorie_id"),
-         d.get("bezeichnung", ""), d.get("notiz", ""), d.get("konto_id") or db.konto_id("Bargeld"), jetzt, jetzt))
+         d.get("bezeichnung", ""), d.get("notiz", ""), d.get("konto_id") or db.konto_id("Bargeld"),
+         ("app:" + ref) if ref else None, 1 if roh.get("pruefen") else 0, jetzt, jetzt))
     _anteil_uebernehmen(eid, anteil, roh)
     sensoren_aktualisieren()
     return _eintrag_laden(eid)
@@ -782,8 +790,48 @@ def index():
     return FileResponse(os.path.join(STATIC, "index.html"), headers={"Cache-Control": "no-cache"})
 
 
+def _app_version():
+    import re as _re
+    m = _re.search(r"\?v=(\d+)", open(os.path.join(STATIC, "index.html")).read())
+    return m.group(1) if m else "0"
+
+
+@app.get("/sw.js")
+def service_worker():
+    text = open(os.path.join(STATIC, "sw.js")).read().replace("__VERSION__", _app_version())
+    return Response(text, media_type="application/javascript", headers={"Cache-Control": "no-cache"})
+
+
+@app.get("/zertifikat.crt")
+def zertifikat():
+    return Response(tls.ca_pem(), media_type="application/x-x509-ca-cert",
+                    headers={"Content-Disposition": 'attachment; filename="Ausgaben-Zertifikat.crt"'})
+
+
+@app.get("/api/https")
+def https_status():
+    return tls.status()
+
+
+@app.put("/api/https")
+def https_setzen(d: dict = Body(...)):
+    tls.eigene_setzen(d.get("eigene") or [])
+    return tls.status()
+
+
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
 
 
+async def _server_starten():
+    """HTTP auf 8099 (Ingress und direkter Port) und HTTPS auf 8443 (Web-App mit Offline-Betrieb)."""
+    zertifikat, schluessel = tls.sicherstellen()
+    http = uvicorn.Server(uvicorn.Config(app, host="0.0.0.0", port=8099, log_level="warning", proxy_headers=False))
+    https = uvicorn.Server(uvicorn.Config(app, host="0.0.0.0", port=tls.PORT, log_level="warning", proxy_headers=False,
+                                          lifespan="off", ssl_certfile=zertifikat, ssl_keyfile=schluessel))
+    https.config.load()
+    tls.ssl_kontext = https.config.ssl
+    await asyncio.gather(http.serve(), https.serve())
+
+
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8099, log_level="warning", proxy_headers=False)
+    asyncio.run(_server_starten())

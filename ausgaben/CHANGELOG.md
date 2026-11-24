@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.8.0
+
+- Offline-Betrieb der iPhone-Web-App: Sie startet ohne Netz mit dem letzten Stand. Neue Ausgaben und
+  Kassenbon-Fotos werden auf dem Gerät gespeichert und automatisch übertragen, sobald wieder Verbindung
+  besteht (Kassenbons landen dann unter „Prüfen“).
+- HTTPS mit eigenem Zertifikat auf Port 8443 (Voraussetzung für den Offline-Betrieb). Einrichtung unter
+  Mehr → Offline & HTTPS; das Zertifikat erneuert sich automatisch.
+- Neue Einträge werden auch bei doppeltem Senden nur einmal angelegt.
+
 ## 1.7.3
 
 - Banken: Schalter „Fehlersuche“ schreibt die Kommunikation mit der Bank ins Add-on-Protokoll (PIN ausgeblendet).

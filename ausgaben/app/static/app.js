@@ -64,13 +64,20 @@ function toast(text, aktion) {
   toast.timer = setTimeout(() => (t.hidden = true), aktion ? 5000 : 2600);
 }
 
+class OfflineFehler extends Error {
+  constructor() { super("Offline – das geht erst wieder mit Verbindung"); this.offline = true; }
+}
 async function api(pfad, opt = {}) {
   const init = { method: opt.method || "GET", headers: {}, credentials: "same-origin" };
   const token = localStorage.getItem("ausgaben_token");
   if (token) init.headers["X-Ausgaben-Token"] = token;
   if (opt.body instanceof FormData) init.body = opt.body;
   else if (opt.body !== undefined) { init.body = JSON.stringify(opt.body); init.headers["Content-Type"] = "application/json"; }
-  const r = await fetch("api/" + pfad, init);
+  let r;
+  try { r = await fetch("api/" + pfad, init); } catch (_) { offlineMelden(null); throw new OfflineFehler(); }
+  const offlineStand = r.headers.get("X-Ausgaben-Offline");
+  if (offlineStand !== null) { offlineMelden(+offlineStand || null); if (r.status === 503) throw new OfflineFehler(); }
+  else if (r.status !== 503) onlineMelden();
   if (r.status === 401) { anmeldungZeigen(); throw new Error("Nicht angemeldet"); }
   if (!r.ok) {
     let msg = r.statusText;
@@ -80,6 +87,89 @@ async function api(pfad, opt = {}) {
   return opt.roh ? r : r.json();
 }
 const qs = (o) => new URLSearchParams(Object.entries(o).filter(([, v]) => v !== "" && v != null && v !== false)).toString();
+
+// ---------------------------------------------------------------- Offline-Betrieb
+const WS_KEY = "ausgaben_warteschlange";
+const wsLesen = () => { try { return JSON.parse(localStorage.getItem(WS_KEY) || "[]"); } catch (_) { return []; } };
+const wsSchreiben = (l) => localStorage.setItem(WS_KEY, JSON.stringify(l));
+const neueRef = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
+
+function offlineMelden(stand) {
+  if (!S.offline) S.offline = { stand };
+  else if (stand && (!S.offline.stand || stand < S.offline.stand)) S.offline.stand = stand;
+  leisteZeigen();
+}
+function onlineMelden() {
+  if (!S.offline) return;
+  S.offline = null; leisteZeigen();
+  warteschlangeSenden();
+}
+function leisteZeigen() {
+  let el = $("#offline-leiste");
+  if (!el) { el = document.createElement("button"); el.id = "offline-leiste"; document.body.appendChild(el); el.onclick = () => warteschlangeSenden(true); }
+  const n = wsLesen().length;
+  const teile = [];
+  if (S.offline) {
+    const d = S.offline.stand ? new Date(S.offline.stand) : null;
+    const heute = d && d.toDateString() === new Date().toDateString();
+    teile.push("Offline" + (d ? ` · Stand ${d.toLocaleString("de-DE", heute ? { hour: "2-digit", minute: "2-digit" } : { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" })}` : ""));
+  }
+  if (n) teile.push(`${n} ${n === 1 ? "Eintrag wartet" : "Einträge warten"}`);
+  el.textContent = teile.join(" · ");
+  el.hidden = !teile.length;
+  document.documentElement.classList.toggle("mit-offline-leiste", !!teile.length);
+}
+function inWarteschlange(x) {
+  const l = wsLesen(); l.push({ ...x, zeit: Date.now() });
+  try { wsSchreiben(l); } catch (_) { throw new Error("Der Speicher auf dem Gerät ist voll, der Eintrag wurde nicht gespeichert"); }
+  leisteZeigen();
+}
+async function warteschlangeSenden(vonHand = false) {
+  if (S.sendetWs || !wsLesen().length) return;
+  S.sendetWs = true;
+  let gesendet = 0;
+  try {
+    for (;;) {
+      const l = wsLesen();
+      if (!l.length) break;
+      const x = l[0];
+      try {
+        if (x.art === "eintrag") {
+          await api("eintraege", { method: "POST", body: x.daten });
+        } else if (x.art === "beleg") {
+          const r = await api("beleg", { method: "POST", body: { bild: x.bild } });
+          if (r.lesbar && r.betrag != null) {
+            await api("eintraege", { method: "POST", body: {
+              client_ref: x.ref, pruefen: true, datum: r.datum ? `${r.datum}T${r.uhrzeit || "12:00"}` : x.datum,
+              betrag: r.betrag, waehrung: r.waehrung || "EUR", kategorie_id: r.kategorie_id, konto_id: r.konto_id || x.konto_id,
+              bezeichnung: r.bezeichnung || r.haendler || "Kassenbon", notiz: "Offline fotografierter Kassenbon, bitte prüfen" } });
+          } else {
+            toast(`Ein offline fotografierter Kassenbon war nicht lesbar: ${r.hinweis || "bitte von Hand erfassen"}`);
+          }
+        }
+      } catch (e) {
+        if (e.offline || e.message === "Nicht angemeldet") throw e;
+        toast(`Nicht übertragen: ${e.message}`); // fehlerhafter Eintrag blockiert nicht die übrigen
+      }
+      const rest = wsLesen(); rest.shift(); wsSchreiben(rest);
+      gesendet++;
+    }
+  } catch (e) {
+    if (vonHand) toast(e.message);
+  } finally {
+    S.sendetWs = false;
+    leisteZeigen();
+    if (gesendet) {
+      toast(`${gesendet} offline ${gesendet === 1 ? "erfasster Eintrag" : "erfasste Einträge"} übertragen`);
+      try { await metaLaden(); neuZeichnen(); } catch (_) { /* egal */ }
+    }
+  }
+}
+window.addEventListener("online", () => warteschlangeSenden());
+window.addEventListener("unhandledrejection", (ev) => {
+  if (ev.reason && ev.reason.offline) { ev.preventDefault(); toast(ev.reason.message); }
+});
+setInterval(() => { if (wsLesen().length && document.visibilityState === "visible") warteschlangeSenden(); }, 30000);
 
 async function metaLaden() {
   S.meta = await api("meta");
@@ -120,6 +210,51 @@ function farbpunkte(id) {
   const d = DESIGNS[id] || DESIGNS.salbei;
   return `<span class="farbpunkte"><i style="background:${d.hell.akzent}"></i><i style="background:${d.dunkel.akzent}"></i><i style="background:${d.hell.pruefen}"></i></span>`;
 }
+async function offlineAnsicht() {
+  const h = await api("https");
+  const ip = (h.namen.find((n) => /^\d+\.\d+\.\d+\.\d+$/.test(n)) || location.hostname);
+  const httpsAdresse = `https://${ip}:${h.port}`;
+  const httpAdresse = `${location.protocol}//${location.host}`;
+  const istHttps = location.protocol === "https:";
+  const sw = !!navigator.serviceWorker?.controller;
+  const n = wsLesen().length;
+  unterseite("Offline & HTTPS", `
+    <div class="mehr-liste">
+      <div class="zeile">Diese Verbindung<span class="rechts">${istHttps ? "HTTPS ✓" : "HTTP (ohne Offline)"}</span></div>
+      <div class="zeile">Offline-Speicher<span class="rechts">${sw ? "aktiv ✓" : istHttps ? "startet beim nächsten Öffnen" : "nicht möglich"}</span></div>
+      <div class="zeile">Warten auf Übertragung<span class="rechts">${n}</span></div>
+    </div>
+    ${n ? '<div class="knopfreihe"><button class="knopf zweit" id="o-senden">Jetzt übertragen</button></div>' : ""}
+    ${istHttps && sw ? `<p class="leise" style="font-size:14px;margin:12px 4px">Alles eingerichtet. Ohne Netz startet die App mit dem letzten Stand; neue Ausgaben und Kassenbon-Fotos werden gespeichert und automatisch übertragen.</p>` : `
+    <div class="abschnitt">Einrichtung auf dem iPhone (einmalig)</div>
+    <ol class="anleitung">
+      <li><b>Zertifikat laden:</b> In <b>Safari</b> (nicht in der Homescreen-App) <span class="zahl">${esc(httpAdresse)}/zertifikat.crt</span> öffnen und „Zulassen“ tippen.
+        <div class="knopfreihe"><a class="knopf zweit" href="zertifikat.crt" target="_blank" rel="noopener">Zertifikat herunterladen</a><button class="knopf zweit" id="o-kopie1">Adresse kopieren</button></div></li>
+      <li><b>Profil installieren:</b> Einstellungen → Allgemein → VPN &amp; Geräteverwaltung → „Ausgaben Add-on CA“ → Installieren.</li>
+      <li><b>Vertrauen einschalten:</b> Einstellungen → Allgemein → Info → ganz unten Zertifikatsvertrauenseinstellungen → „Ausgaben Add-on CA“ einschalten.</li>
+      <li><b>App neu ablegen:</b> In Safari <span class="zahl">${esc(httpsAdresse)}</span> öffnen, Token eingeben, Teilen → Zum Home-Bildschirm. Die alte Homescreen-App kannst du danach löschen.
+        <div class="knopfreihe"><button class="knopf zweit" id="o-kopie2">Adresse kopieren</button></div></li>
+      <li>Die neue App einmal mit Verbindung öffnen, damit sie den aktuellen Stand speichert.</li>
+    </ol>`}
+    <div class="abschnitt">Zertifikat</div>
+    <div class="mehr-liste">
+      <div class="zeile">Gilt für<span class="rechts">${esc(h.namen.join(", ") || "–")}</span></div>
+      <div class="zeile">Erneuert sich automatisch, aktuell bis<span class="rechts">${new Date(h.gueltig_bis).toLocaleDateString("de-DE")}</span></div>
+      <div class="zeile" style="display:block">Fingerabdruck<br><small class="leise zahl" style="word-break:break-all">${esc(h.fingerabdruck)}</small></div>
+    </div>
+    <label class="feld" style="margin-top:12px"><span>Weitere Adressen (Komma-getrennt, z. B. Tailscale-Namen)</span><input id="o-namen" value="${esc(h.eigene.join(", "))}" autocomplete="off" autocapitalize="off"></label>
+    <div class="knopfreihe" style="margin-top:0"><button class="knopf zweit" id="o-sichern">Sichern</button></div>
+    <p class="leise" style="font-size:13px;margin:8px 4px">Adressen, unter denen du die App aufrufst, lernt das Add-on automatisch. Ohne Netz gehen Bankabrufe, KI und Änderungen an bestehenden Einträgen nicht; neue Ausgaben und Kassenbon-Fotos schon.</p>`);
+  const kopieren = async (t) => { try { await navigator.clipboard.writeText(t); toast("Adresse kopiert"); } catch (_) { toast(t); } };
+  $("#o-kopie1")?.addEventListener("click", () => kopieren(`${httpAdresse}/zertifikat.crt`));
+  $("#o-kopie2")?.addEventListener("click", () => kopieren(httpsAdresse));
+  $("#o-senden")?.addEventListener("click", async () => { await warteschlangeSenden(true); offlineAnsicht(); });
+  $("#o-sichern").onclick = async () => {
+    await api("https", { method: "PUT", body: { eigene: $("#o-namen").value.split(",").map((x) => x.trim()).filter(Boolean) } });
+    toast("Gesichert, Zertifikat aktualisiert"); offlineAnsicht();
+  };
+}
+
 const STARTSEITEN = { uebersicht: "Übersicht", eintraege: "Einträge", verlauf: "Verlauf" };
 function startseiteSheet() {
   const aktuell = S.meta.darstellung.startseite || "uebersicht";
@@ -579,7 +714,7 @@ function erfassen(e = null) {
   };
   if (neu) {
     $("#beleg").onclick = () => {
-      if (!S.meta.ki.aktiv) { toast("Zum Einlesen von Kassenbons wird die KI gebraucht (API-Key in den Add-on-Optionen)"); return; }
+      if (!S.meta.ki.aktiv && !S.offline) { toast("Zum Einlesen von Kassenbons wird die KI gebraucht (API-Key in den Add-on-Optionen)"); return; }
       betragFeld.blur();
       $("#beleg-datei").click();
     };
@@ -590,10 +725,20 @@ function erfassen(e = null) {
       const vorschau = URL.createObjectURL(datei);
       $("#beleg-info").innerHTML = `<div class="beleg-ergebnis"><img src="${vorschau}" alt=""><div><b>Lese Kassenbon …</b><br><span class="leise">Dauert ein paar Sekunden.</span></div><span class="kreisel" aria-hidden="true"></span></div>`;
       $("#beleg").disabled = true;
+      let bild = null;
       try {
-        const r = await api("beleg", { method: "POST", body: { bild: await bildVerkleinern(datei) } });
+        bild = await bildVerkleinern(datei);
+        const r = await api("beleg", { method: "POST", body: { bild } });
         if ($("#beleg-info")) belegUebernehmen(r, vorschau);
       } catch (err) {
+        if (err.offline && bild) {
+          try {
+            inWarteschlange({ art: "beleg", ref: neueRef(), bild, datum: $("#datum").value, konto_id: +$("#konto").value });
+            sheetSchliessen();
+            toast("Offline: Foto gespeichert. Es wird eingelesen und unter „Prüfen“ angelegt, sobald Verbindung besteht");
+            return;
+          } catch (e2) { err = e2; }
+        }
         if ($("#beleg-info")) $("#beleg-info").innerHTML = `<div class="hinweis"><span>${esc(err.message)}</span></div>`;
       } finally {
         if ($("#beleg")) $("#beleg").disabled = false;
@@ -607,7 +752,8 @@ function erfassen(e = null) {
     const q = ev.target.value.trim();
     if (!q) { $("#vorschlaege").innerHTML = ""; return; }
     vTimer = setTimeout(async () => {
-      const v = await api("vorschlaege?" + qs({ q }));
+      let v;
+      try { v = await api("vorschlaege?" + qs({ q })); } catch (_) { return; } // offline: keine Vorschläge
       $("#vorschlaege").innerHTML = v.length ? `<div class="vorschlagsliste">${v.slice(0, 5).map((x, i) => {
         const k = kat(x.kategorie_id);
         return `<button data-i="${i}"><span>${esc(k?.icon || "")}</span><span>${esc(x.bezeichnung)}</span><span class="rechts">${esc(k?.name || "")}, ${x.n}×</span></button>`;
@@ -673,7 +819,16 @@ function erfassen(e = null) {
     }
     try {
       if (neu) {
-        await api("eintraege", { method: "POST", body: daten });
+        daten.client_ref = neueRef();
+        try {
+          await api("eintraege", { method: "POST", body: daten });
+        } catch (err) {
+          if (!err.offline) throw err;
+          inWarteschlange({ art: "eintrag", daten });
+          sheetSchliessen();
+          toast("Offline gespeichert – wird übertragen, sobald wieder Verbindung besteht");
+          return;
+        }
         localStorage.setItem("ausgaben_waehrung", daten.waehrung);
         localStorage.setItem("ausgaben_konto", daten.konto_id);
         S.letzteWaehrung = daten.waehrung; S.letztesKonto = String(daten.konto_id);
@@ -818,6 +973,7 @@ async function mehrAnsicht() {
     <div class="abschnitt">Darstellung</div>
     <div class="mehr-liste">
       <button id="m-design"><span class="ic">🎨</span>Design<span class="rechts">${esc((DESIGNS[S.design.id] || DESIGNS.salbei).name)} · ${esc(MODI.find(([x]) => x === S.design.modus)[1])}${farbpunkte(S.design.id)}</span></button>
+      <button id="m-offline"><span class="ic">📶</span>Offline &amp; HTTPS<span class="rechts">${location.protocol === "https:" && navigator.serviceWorker?.controller ? "aktiv" : "einrichten"}</span></button>
       <button id="m-start"><span class="ic">🏠</span>Startseite<span class="rechts">${esc(STARTSEITEN[S.meta.darstellung.startseite] || "Übersicht")}</span></button>
     </div>
     <div class="abschnitt">Verwaltung</div>
@@ -834,6 +990,7 @@ async function mehrAnsicht() {
   $("#m-reset").onclick = zuruecksetzenSheet;
   $("#m-design").onclick = designAnsicht;
   $("#m-start").onclick = startseiteSheet;
+  $("#m-offline").onclick = offlineAnsicht;
   $("#m-pruefen").onclick = pruefenAnsicht;
   $("#m-ki").onclick = kiAnsicht;
   $("#m-banken").onclick = bankenAnsicht;
@@ -1736,7 +1893,16 @@ function anmeldungZeigen() {
 }
 
 async function start() {
-  try { await metaLaden(); } catch (e) { if (e.message !== "Nicht angemeldet") ansicht.innerHTML = `<div class="leer">${esc(e.message)}</div>`; return; }
+  const imRahmen = document.documentElement.classList.contains("eingebettet") || location.pathname.includes("hassio_ingress");
+  if ("serviceWorker" in navigator && window.isSecureContext && !imRahmen) {
+    navigator.serviceWorker.register("sw.js").catch((e) => console.warn("Service Worker", e));
+  }
+  leisteZeigen();
+  try { await metaLaden(); } catch (e) {
+    if (e.message !== "Nicht angemeldet") ansicht.innerHTML = `<div class="leer">${esc(e.offline ? "Offline und noch keine gespeicherten Daten auf diesem Gerät. Öffne die App einmal mit Verbindung." : e.message)}</div>`;
+    return;
+  }
+  warteschlangeSenden();
   const hash = location.hash.replace("#", "");
   if (hash === "neu") { tabWechseln("uebersicht"); erfassen(); }
   else if (hash === "pruefen") pruefenAnsicht();

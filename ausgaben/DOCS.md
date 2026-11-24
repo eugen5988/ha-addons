@@ -54,6 +54,17 @@ für alle Einträge des Händlers; frühere behalten ihren Anteil, außer du hak
 3. `http://<HA-Adresse>:8199` in Safari öffnen, Token eingeben, **Teilen → Zum Home-Bildschirm**.
 4. Unterwegs über Tailscale mit freigegebener Subnetz-Route erreichbar.
 
+## Offline-Betrieb (HTTPS)
+
+Offline startet die Web-App nur über HTTPS. Das Add-on bringt dafür ein eigenes Zertifikat mit (Port 8443):
+
+1. In Safari `http://<HA-Adresse>:8199/zertifikat.crt` öffnen und das Profil laden.
+2. Einstellungen → Allgemein → VPN & Geräteverwaltung → „Ausgaben Add-on CA“ installieren.
+3. Einstellungen → Allgemein → Info → Zertifikatsvertrauenseinstellungen → „Ausgaben Add-on CA“ einschalten.
+4. `https://<HA-Adresse>:8443` in Safari öffnen, Token eingeben, zum Home-Bildschirm hinzufügen.
+
+Die Schritte stehen mit den passenden Adressen auch in der App unter Mehr → Offline & HTTPS.
+
 ## Sensoren und Ereignis
 
 - `sensor.<präfix>_heute`, `_woche`, `_monat`, `_jahr`, `_zu_prufen`
