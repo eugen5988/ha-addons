@@ -56,6 +56,13 @@ a = {r["id"]: r["anteil"] for r in db.q("SELECT id, anteil FROM eintraege")}
 pruef("Rueckwirkend auf beide Disney-Eintraege", abs(a[alt1] - 1 / 6) < 1e-9 and abs(a[alt2] - 1 / 6) < 1e-9)
 pruef("Netflix unberuehrt", a[netflix] == 1.0)
 
+# Teilnehmer steigt aus: ab Oktober 1/5, September bleibt 1/6
+anteile.regel_setzen(db.q1("SELECT * FROM eintraege WHERE id=?", (alt1,)), "bruch", 1 / 5)
+a = {r["id"]: r["anteil"] for r in db.q("SELECT id, anteil FROM eintraege")}
+pruef("Neuer Faktor ab Oktober-Eintrag", abs(a[alt1] - 1 / 5) < 1e-9)
+pruef("September behaelt 1/6", abs(a[alt2] - 1 / 6) < 1e-9)
+anteile.regel_setzen(db.q1("SELECT * FROM eintraege WHERE id=?", (alt1,)), "bruch", 1 / 6)
+
 # Neuer automatischer Eintrag bekommt den Anteil
 neu = eintrag(15.99, "DISNEY PLUS", "Disney+", "2026-11-05T10:00:00")
 pruef("Neuer Eintrag noch ungeprueft", db.q1("SELECT anteil FROM eintraege WHERE id=?", (neu,))["anteil"] is None)

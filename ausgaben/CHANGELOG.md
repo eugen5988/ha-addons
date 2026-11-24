@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.7.1
+
+- Eigenanteil: Eine neue oder geänderte Regel gilt ab dem Datum des Eintrags; frühere Einträge behalten
+  ihren Anteil (z. B. wenn jemand beim Abo aus- oder einsteigt). Alle bisherigen umstellen geht über
+  ein zusätzliches Häkchen.
+
 ## 1.7.0
 
 - Eigenanteil: Bei geteilten Ausgaben (z. B. Abo mit mehreren Teilnehmern) zählt nur dein Anteil.

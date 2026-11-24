@@ -503,7 +503,8 @@ function erfassen(e = null) {
     <label class="feld"><span>Notiz</span><input id="notiz" value="${esc(d.notiz || "")}" placeholder="optional"></label>
     <label class="feld"><span>Mein Anteil (leer = voller Betrag)</span><input id="anteil" autocomplete="off" value="${esc(e ? anteilText(e) : "")}" placeholder="z. B. 1/6, 50 % oder 2,67"></label>
     <div class="anteil-info" id="anteil-info"></div>
-    ${(e && (e.haendler_roh || e.bezeichnung)) || neu ? checkZeile("anteil-regel", true, `<span id="anteil-regel-text"></span>`) : ""}
+    ${(e && (e.haendler_roh || e.bezeichnung)) || neu ? `<div id="anteil-optionen">${checkZeile("anteil-regel", true, `<span id="anteil-regel-text"></span>`)}
+      <div style="margin-left:28px">${checkZeile("anteil-alle", false, "Auch alle bisherigen Einträge umstellen")}</div></div>` : ""}
     <label class="feld" id="kurs-feld" hidden><span>Kurs (EUR je 1 Einheit, leer = automatisch)</span><input id="kurs" inputmode="decimal" value="${e?.kurs && e.waehrung !== "EUR" ? String(e.kurs).replace(".", ",") : ""}"></label>
     ${herkunft}
     ${!neu && e.haendler_roh ? `<label style="display:flex;gap:8px;align-items:center;font-size:14px;margin:8px 2px"><input type="checkbox" id="regel" checked> Für „${esc(e.haendler_roh)}“ künftig genauso einordnen</label>` : ""}
@@ -626,13 +627,15 @@ function erfassen(e = null) {
   const anteilStart = $("#anteil").value;
   const anteilZeigen = () => {
     const t = $("#anteil").value.trim(), b = zahlLesen(betragFeld.value);
-    const regel = $("#anteil-regel")?.closest(".check-zeile");
+    const regel = $("#anteil-optionen");
     const name = (e && (e.bezeichnung || e.haendler_roh)) || $("#bezeichnung").value.trim();
     if (regel) {
       regel.style.display = !t && !anteilStart ? "none" : "";
       $("#anteil-regel-text").textContent = t
-        ? `Für alle Einträge von „${name || "diesem Händler"}“ übernehmen, auch bisherige`
+        ? `Ab jetzt für alle Einträge von „${name || "diesem Händler"}“ übernehmen`
         : `Regel für „${name || "diesem Händler"}“ entfernen`;
+      $("#anteil-alle").closest(".check-zeile").style.display = $("#anteil-regel").checked ? "" : "none";
+      $("#anteil-alle").nextElementSibling.textContent = t ? "Auch alle bisherigen Einträge umstellen" : "Auch bisherige Einträge wieder voll zählen";
     }
     let info = "";
     const m = t.replace(/\s|€/g, "").replace(",", ".");
@@ -647,6 +650,7 @@ function erfassen(e = null) {
     $("#anteil-info").textContent = info;
   };
   $("#anteil").addEventListener("input", anteilZeigen);
+  $("#anteil-regel")?.addEventListener("change", anteilZeigen);
   betragFeld.addEventListener("input", anteilZeigen);
   $("#bezeichnung").addEventListener("input", anteilZeigen);
   anteilZeigen();
@@ -665,6 +669,7 @@ function erfassen(e = null) {
     if ($("#anteil").value.trim() !== anteilStart) {
       daten.anteil_text = $("#anteil").value.trim();
       daten.anteil_regel = !!$("#anteil-regel")?.checked;
+      daten.anteil_rueckwirkend = daten.anteil_regel && !!$("#anteil-alle")?.checked;
     }
     try {
       if (neu) {

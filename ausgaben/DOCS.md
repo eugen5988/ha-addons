@@ -44,8 +44,8 @@ Mehr → KI-Kategorisierung.
 ## Eigenanteil
 
 Zahlst du etwas komplett, bekommst aber Geld von anderen zurück (z. B. ein geteiltes Abo), trägst du
-im Eintrag unter **„Mein Anteil“** z. B. `1/6`, `50 %` oder `2,67` ein. Mit dem Häkchen gilt das für alle
-Einträge dieses Händlers, auch künftige. Auswertungen und Sensoren rechnen dann nur mit deinem Anteil.
+im Eintrag unter **„Mein Anteil“** z. B. `1/6`, `50 %` oder `2,67` ein. Mit dem Häkchen gilt das ab diesem Eintrag
+für alle Einträge des Händlers; frühere behalten ihren Anteil, außer du hakst „Auch alle bisherigen“ an. Auswertungen und Sensoren rechnen dann nur mit deinem Anteil.
 
 ## Web-App auf dem iPhone
 

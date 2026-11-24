@@ -88,8 +88,13 @@ def neue_anwenden():
     return sum(1 for f, _ in werte if f < 1)
 
 
-def regel_setzen(e, art, wert, rueckwirkend=True):
-    """Regel fuer den Haendler dieses Eintrags anlegen oder aendern."""
+def regel_setzen(e, art, wert, rueckwirkend=False):
+    """Regel fuer den Haendler dieses Eintrags anlegen oder aendern.
+
+    Die Regel gilt fuer neue Eintraege. Bestehende Eintraege behalten ihren gespeicherten Anteil,
+    ausser denen ab dem Datum dieses Eintrags (z. B. bereits gebuchte spaetere Monate).
+    Mit rueckwirkend=True werden alle Eintraege des Haendlers umgestellt.
+    """
     muster = schluessel(e)
     if not muster:
         raise ValueError("Für diesen Eintrag lässt sich kein Händler erkennen")
@@ -97,11 +102,11 @@ def regel_setzen(e, art, wert, rueckwirkend=True):
     db.x("INSERT INTO anteil_regeln(muster, name, art, wert, geaendert) VALUES (?,?,?,?,?) "
          "ON CONFLICT(muster) DO UPDATE SET art=excluded.art, wert=excluded.wert, name=excluded.name, "
          "geaendert=excluded.geaendert", (muster, name, art, wert, db.jetzt_iso()))
-    if rueckwirkend:
-        werte = [(faktor(art, wert, x["betrag"]), x["id"])
-                 for x in db.q("SELECT id, betrag, haendler_roh, bezeichnung FROM eintraege")
-                 if _passt(muster, schluessel(x))]
-        db.transaktion(lambda c: c.executemany("UPDATE eintraege SET anteil=? WHERE id=?", werte))
+    sql, args = "SELECT id, betrag, haendler_roh, bezeichnung FROM eintraege", ()
+    if not rueckwirkend:
+        sql, args = sql + " WHERE datum >= ?", (e["datum"],)
+    werte = [(faktor(art, wert, x["betrag"]), x["id"]) for x in db.q(sql, args) if _passt(muster, schluessel(x))]
+    db.transaktion(lambda c: c.executemany("UPDATE eintraege SET anteil=? WHERE id=?", werte))
     return muster
 
 

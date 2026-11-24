@@ -226,11 +226,11 @@ def _anteil_uebernehmen(eid, anteil, d):
     db.x("UPDATE eintraege SET anteil=? WHERE id=?", (f, eid))
     if d.get("anteil_regel"):
         if anteil:
-            anteile.regel_setzen(e, anteil[0], anteil[1], rueckwirkend=True)
+            anteile.regel_setzen(e, anteil[0], anteil[1], rueckwirkend=bool(d.get("anteil_rueckwirkend")))
         else:
             r = anteile.regel_fuer(e)
             if r:
-                anteile.regel_loeschen(r["id"], rueckwirkend=True)
+                anteile.regel_loeschen(r["id"], rueckwirkend=bool(d.get("anteil_rueckwirkend")))
 
 
 @app.get("/api/anteile")
