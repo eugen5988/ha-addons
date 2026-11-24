@@ -41,6 +41,12 @@ Reihenfolge: gelernte Zuordnung → eigener Verlauf → Claude. Unsichere Fälle
 Claude mit der Zeit seltener gefragt wird. Verbrauch und Kosten der KI stehen unter
 Mehr → KI-Kategorisierung.
 
+## Eigenanteil
+
+Zahlst du etwas komplett, bekommst aber Geld von anderen zurück (z. B. ein geteiltes Abo), trägst du
+im Eintrag unter **„Mein Anteil“** z. B. `1/6`, `50 %` oder `2,67` ein. Mit dem Häkchen gilt das für alle
+Einträge dieses Händlers, auch künftige. Auswertungen und Sensoren rechnen dann nur mit deinem Anteil.
+
 ## Web-App auf dem iPhone
 
 1. In der Konfiguration einen Zugriffs-Token setzen (beliebige lange Zeichenfolge).

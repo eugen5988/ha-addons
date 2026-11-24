@@ -49,6 +49,14 @@ CREATE TABLE IF NOT EXISTS eintraege (
 CREATE INDEX IF NOT EXISTS ix_eintraege_datum ON eintraege(datum);
 CREATE INDEX IF NOT EXISTS ix_eintraege_kat ON eintraege(kategorie_id);
 CREATE INDEX IF NOT EXISTS ix_eintraege_pruefen ON eintraege(pruefen);
+CREATE TABLE IF NOT EXISTS anteil_regeln (
+    id INTEGER PRIMARY KEY,
+    muster TEXT NOT NULL UNIQUE,
+    name TEXT,
+    art TEXT NOT NULL,
+    wert REAL NOT NULL,
+    geaendert TEXT
+);
 CREATE TABLE IF NOT EXISTS regeln (
     id INTEGER PRIMARY KEY,
     muster TEXT NOT NULL UNIQUE,
@@ -107,8 +115,16 @@ def verbindung():
         _conn.execute("PRAGMA journal_mode=WAL")
         _conn.execute("PRAGMA foreign_keys=ON")
         _conn.executescript(SCHEMA)
+        _spalten_ergaenzen(_conn)
         _initialbefuellung(_conn)
     return _conn
+
+
+def _spalten_ergaenzen(c):
+    """Spalten, die nach der ersten Version dazugekommen sind."""
+    vorhanden = {r[1] for r in c.execute("PRAGMA table_info(eintraege)")}
+    if "anteil" not in vorhanden:
+        c.execute("ALTER TABLE eintraege ADD COLUMN anteil REAL")
 
 
 def _initialbefuellung(c):

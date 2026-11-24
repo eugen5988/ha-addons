@@ -9,7 +9,7 @@ from . import db
 from .einstellungen import optionen
 
 log = logging.getLogger("ausgaben.ha")
-BETRAG = "COALESCE(e.betrag_eur, 0)"
+BETRAG = "COALESCE(e.betrag_eur, 0) * COALESCE(e.anteil, 1)"
 
 
 def filter_sql(p):
@@ -141,7 +141,7 @@ def sensoren_senden():
           differenz_vormonat=round(monat_summe - k["vormonat_bis_heute"], 2),
           kategorien=[{"name": t["name"], "icon": t["icon"], "summe": t["summe"]} for t in top],
           letzte=[{"datum": e["datum"][:16].replace("T", " "), "bezeichnung": e["bezeichnung"],
-                   "kategorie": e["kategorie"], "betrag": e["betrag_eur"], "pruefen": bool(e["pruefen"])}
+                   "kategorie": e["kategorie"], "betrag": round((e["betrag_eur"] or 0) * (e["anteil"] if e["anteil"] is not None else 1), 2), "pruefen": bool(e["pruefen"])}
                   for e in letzte])
     sende("jahr", k["jahr"], "Allgemein Finanzen Ausgaben Jahr")
     _ha(f"states/sensor.{praefix}_zu_prufen",
@@ -152,6 +152,6 @@ def sensoren_senden():
 def ereignis_neue_ausgabe(eintrag):
     _ha("events/ausgaben_neuer_eintrag", {
         "id": eintrag["id"], "bezeichnung": eintrag["bezeichnung"], "kategorie": eintrag.get("kategorie"),
-        "betrag": eintrag["betrag"], "waehrung": eintrag["waehrung"], "betrag_eur": eintrag["betrag_eur"],
+        "betrag": eintrag["betrag"], "waehrung": eintrag["waehrung"], "betrag_eur": eintrag["betrag_eur"], "anteil": eintrag.get("anteil"),
         "pruefen": bool(eintrag["pruefen"]), "haendler": eintrag.get("haendler_roh"),
     })

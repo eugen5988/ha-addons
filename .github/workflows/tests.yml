@@ -12,3 +12,4 @@ jobs:
       - run: python tests/test_tr.py
       - run: python tests/test_beleg.py
       - run: python tests/test_ki.py
+      - run: python tests/test_anteile.py

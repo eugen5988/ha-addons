@@ -337,3 +337,5 @@ details.erweitert[open] summary::before { transform: rotate(90deg); }
 .ki-kachel { background: var(--flaeche); border-radius: 12px; padding: 10px 12px; min-width: 0; }
 .ki-kachel small { display: block; color: var(--leise); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ki-kachel b { display: block; font-size: 19px; margin: 2px 0; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.anteil-info { font-size: 13px; color: var(--leise); margin: -4px 4px 8px; min-height: 0; }
+.anteil-info:empty { display: none; }

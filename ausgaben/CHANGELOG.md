@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.7.0
+
+- Eigenanteil: Bei geteilten Ausgaben (z. B. Abo mit mehreren Teilnehmern) zählt nur dein Anteil.
+  Im Eintrag unter „Mein Anteil“ als Bruch (1/6), Prozent (50 %) oder fester Betrag (2,67) angeben,
+  auf Wunsch für alle Einträge des Händlers, auch künftige.
+- Liste zeigt „2,67 € von 15,99 €“; Summen, Verlauf, Kategorien und Sensoren rechnen mit dem Eigenanteil.
+- Übersicht und Entfernen unter Mehr → Eigenanteile; Excel-Export mit Spalte „Eigenanteil EUR“.
+
 ## 1.6.0
 
 - Startseite wählbar: Übersicht, Einträge oder Verlauf (Mehr → Darstellung → Startseite).

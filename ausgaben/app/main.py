@@ -13,7 +13,7 @@ from fastapi import Body, FastAPI, File, Form, HTTPException, Request, UploadFil
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
-from . import auswertung, beleg, db, export, fints_sync, kategorisierung, ki_nutzung, next_import, tr_sync, waehrung
+from . import anteile, auswertung, beleg, db, export, fints_sync, kategorisierung, ki_nutzung, next_import, tr_sync, waehrung
 from .einstellungen import optionen
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -50,6 +50,7 @@ async def _tr_schleife():
 async def _sensor_schleife():
     while True:
         try:
+            await asyncio.to_thread(anteile.neue_anwenden)
             await asyncio.to_thread(auswertung.sensoren_senden)
             await asyncio.to_thread(waehrung.offene_kurse_nachholen)
         except Exception:  # noqa: BLE001
@@ -93,6 +94,7 @@ async def lebenszyklus(_app):
     fints_sync.nach_abruf = _nach_bankabruf
     tr_sync.nach_abruf = _nach_bankabruf
     tr_sync.migrieren()
+    anteile.neue_anwenden()
     aufgaben = [asyncio.create_task(_tr_schleife()), asyncio.create_task(_sensor_schleife()),
                 asyncio.create_task(_bank_schleife())]
     yield
@@ -202,8 +204,50 @@ def eintraege(request: Request):
     return {"eintraege": zeilen, "summe": round(summe["s"], 2), "anzahl": summe["n"]}
 
 
+_KEIN_ANTEIL = object()
+
+
+def _anteil_lesen(d):
+    """Liest d['anteil_text'] vor dem Speichern (Fehler sollen nichts halb speichern)."""
+    if "anteil_text" not in d:
+        return _KEIN_ANTEIL
+    try:
+        return anteile.lesen(d.get("anteil_text"))
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+
+
+def _anteil_uebernehmen(eid, anteil, d):
+    e = _eintrag_laden(eid)
+    if anteil is _KEIN_ANTEIL:
+        anteile.neue_anwenden()
+        return
+    f = anteile.faktor(anteil[0], anteil[1], e["betrag"]) if anteil else 1.0
+    db.x("UPDATE eintraege SET anteil=? WHERE id=?", (f, eid))
+    if d.get("anteil_regel"):
+        if anteil:
+            anteile.regel_setzen(e, anteil[0], anteil[1], rueckwirkend=True)
+        else:
+            r = anteile.regel_fuer(e)
+            if r:
+                anteile.regel_loeschen(r["id"], rueckwirkend=True)
+
+
+@app.get("/api/anteile")
+def anteile_liste():
+    return anteile.regeln_liste()
+
+
+@app.delete("/api/anteile/{rid}")
+def anteil_loeschen(rid: int, rueckwirkend: bool = False):
+    anteile.regel_loeschen(rid, rueckwirkend)
+    sensoren_aktualisieren()
+    return {"ok": True}
+
+
 @app.post("/api/eintraege")
 def eintrag_anlegen(d: dict = Body(...)):
+    roh, anteil = d, _anteil_lesen(d)
     d = _validieren({k: d.get(k) for k in FELDER + ("kurs",) if k in d})
     if d.get("kurs"):
         d["kurs_manuell"] = True
@@ -215,12 +259,14 @@ def eintrag_anlegen(d: dict = Body(...)):
         "VALUES (?,?,?,?,?,?,?,?,?,'manuell',0,'nutzer',?,?)",
         (d["datum"], d["betrag"], d["waehrung"], d["kurs"], d["betrag_eur"], d.get("kategorie_id"),
          d.get("bezeichnung", ""), d.get("notiz", ""), d.get("konto_id") or db.konto_id("Bargeld"), jetzt, jetzt))
+    _anteil_uebernehmen(eid, anteil, roh)
     sensoren_aktualisieren()
     return _eintrag_laden(eid)
 
 
 @app.put("/api/eintraege/{eid}")
 def eintrag_aendern(eid: int, d: dict = Body(...)):
+    anteil = _anteil_lesen(d)
     alt = _eintrag_laden(eid)
     neu = _validieren({k: d[k] for k in FELDER + ("kurs",) if k in d}, teilweise=True)
     zusammen = {**alt, **neu}
@@ -243,6 +289,7 @@ def eintrag_aendern(eid: int, d: dict = Body(...)):
          db.jetzt_iso(), eid))
     if (kategorie_geaendert or bez_geaendert) and d.get("regel_lernen", True):
         kategorisierung.lerne_aus_korrektur(zusammen)
+    _anteil_uebernehmen(eid, anteil, d)
     sensoren_aktualisieren()
     return _eintrag_laden(eid)
 

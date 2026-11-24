@@ -22,6 +22,7 @@ Der Nutzer spricht Deutsch; Oberfläche, Texte, Commit-Nachrichten und Changelog
 - `db.py` – SQLite-Schema und Hilfsfunktionen (`q`, `q1`, `x`, `einstellung`, `setze_einstellung`)
 - `kategorisierung.py` – Regel → Verlauf → Claude; `frage_claude`
 - `beleg.py` – Kassenbon-Scan (Claude Vision)
+- `anteile.py` – Eigenanteil je Eintrag (`eintraege.anteil`) und Regeln je Händler; Summen über `auswertung.BETRAG`
 - `ki_nutzung.py` – Tokenzählung und Kostenrechnung (Listenpreise in `STANDARD_PREISE`)
 - `tr_sync.py` – Trade Republic über pytr; Zugangsdaten in der DB, Sitzung im pytr-Verzeichnis
 - `fints_sync.py` – DKB, comdirect, andere über python-fints (Jobs mit TAN/App-Freigabe, Nachholen)
@@ -35,6 +36,7 @@ pip install -r ausgaben/requirements.txt pillow
 python tests/test_tr.py
 python tests/test_beleg.py
 python tests/test_ki.py
+python tests/test_anteile.py
 ```
 
 Die Tests laufen ohne Netz: pytr und die Claude-API werden nachgebaut (`tests/fake_pytr.py`).

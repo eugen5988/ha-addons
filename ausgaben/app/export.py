@@ -11,7 +11,7 @@ from . import auswertung, db
 
 SPALTEN = [
     ("Datum", 12), ("Uhrzeit", 8), ("Bezeichnung", 30), ("Kategorie", 24), ("Betrag", 11),
-    ("Währung", 9), ("Kurs (EUR)", 11), ("Betrag EUR", 12), ("Konto", 18), ("Notiz", 30),
+    ("Währung", 9), ("Kurs (EUR)", 11), ("Betrag EUR", 12), ("Eigenanteil EUR", 14), ("Konto", 18), ("Notiz", 30),
     ("Quelle", 9), ("Händler (Rohdaten)", 30),
 ]
 
@@ -22,7 +22,9 @@ def _zeilen(p):
     for e in rows:
         dt = datetime.fromisoformat(e["datum"])
         yield [dt.date(), dt.strftime("%H:%M"), e["bezeichnung"], e["kategorie"] or "", e["betrag"], e["waehrung"],
-               e["kurs"], e["betrag_eur"], e["konto"] or "", e["notiz"] or "", e["quelle"], e["haendler_roh"] or ""]
+               e["kurs"], e["betrag_eur"],
+               round(e["betrag_eur"] * (e["anteil"] if e["anteil"] is not None else 1), 2) if e["betrag_eur"] is not None else None,
+               e["konto"] or "", e["notiz"] or "", e["quelle"], e["haendler_roh"] or ""]
 
 
 def xlsx(p):
@@ -44,12 +46,14 @@ def xlsx(p):
         ws.cell(row=n, column=5).number_format = "#,##0.00"
         ws.cell(row=n, column=7).number_format = "0.0000"
         ws.cell(row=n, column=8).number_format = '#,##0.00 "€"'
+        ws.cell(row=n, column=9).number_format = '#,##0.00 "€"'
     if n > 1:
         ws.append([])
-        ws.append(["Summe", None, None, None, None, None, None, f"=SUBTOTAL(9,H2:H{n})"])
+        ws.append(["Summe", None, None, None, None, None, None, f"=SUBTOTAL(9,H2:H{n})", f"=SUBTOTAL(9,I2:I{n})"])
         ws.cell(row=n + 2, column=1).font = Font(bold=True)
-        ws.cell(row=n + 2, column=8).font = Font(bold=True)
-        ws.cell(row=n + 2, column=8).number_format = '#,##0.00 "€"'
+        for sp in (8, 9):
+            ws.cell(row=n + 2, column=sp).font = Font(bold=True)
+            ws.cell(row=n + 2, column=sp).number_format = '#,##0.00 "€"'
         ws.auto_filter.ref = f"A1:{get_column_letter(len(SPALTEN))}{n}"
     ws.freeze_panes = "A2"
 

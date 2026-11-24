@@ -310,6 +310,14 @@ async function uebersicht() {
 }
 
 // ---------------------------------------------------------------- Listen
+const eigen = (e) => (e.betrag_eur == null ? null : e.betrag_eur * (e.anteil ?? 1));
+const geteilt = (e) => e.anteil != null && e.anteil < 0.9999;
+function anteilText(e) {
+  if (!geteilt(e)) return "";
+  for (let n = 2; n <= 12; n++) for (let z = 1; z < n; z++) if (Math.abs(e.anteil - z / n) < 1e-6) return `${z}/${n}`;
+  return Math.abs(e.betrag * e.anteil).toFixed(2).replace(".", ",");
+}
+
 function eintragZeile(e, mitDatum = false) {
   const k = kat(e.kategorie_id);
   const fremd = e.waehrung !== "EUR";
@@ -320,7 +328,7 @@ function eintragZeile(e, mitDatum = false) {
     <span class="ic" style="${icFarbe(k?.farbe || "#9AA3AE")}">${esc(k?.icon || "❔")}</span>
     <span style="min-width:0"><span class="titel">${esc(e.bezeichnung || e.haendler_roh || "Ohne Bezeichnung")}${e.pruefen ? '<span class="marke pruefen">prüfen</span>' : ""}</span>
       <span class="unter">${esc(unter)}${e.notiz ? " – " + esc(e.notiz) : ""}</span></span>
-    <span class="wert zahl ${gut ? "gut" : ""}">${gut ? "+" + geld(-(e.betrag_eur ?? 0)) : geld(e.betrag_eur ?? 0)}${fremd ? `<small>${geld(e.betrag, e.waehrung)}</small>` : ""}${e.betrag_eur == null ? "<small>Kurs fehlt</small>" : ""}</span>
+    <span class="wert zahl ${gut ? "gut" : ""}">${gut ? "+" + geld(-(eigen(e) ?? 0)) : geld(eigen(e) ?? 0)}${geteilt(e) ? `<small>von ${geld(e.betrag_eur ?? e.betrag, e.betrag_eur != null ? "EUR" : e.waehrung)}</small>` : fremd ? `<small>${geld(e.betrag, e.waehrung)}</small>` : ""}${e.betrag_eur == null ? "<small>Kurs fehlt</small>" : ""}</span>
   </button>`;
 }
 function eintragsListe(eintraege, nachTag = true) {
@@ -332,7 +340,7 @@ function eintragsListe(eintraege, nachTag = true) {
     if (!gruppen.length || gruppen.at(-1).tag !== t) gruppen.push({ tag: t, liste: [] });
     gruppen.at(-1).liste.push(e);
   }
-  return gruppen.map((g) => `<div class="tag-kopf"><span>${tagLabel(g.tag)}</span><span class="zahl">${geld(g.liste.reduce((s, e) => s + (e.betrag_eur || 0), 0))}</span></div>
+  return gruppen.map((g) => `<div class="tag-kopf"><span>${tagLabel(g.tag)}</span><span class="zahl">${geld(g.liste.reduce((s, e) => s + (eigen(e) || 0), 0))}</span></div>
     <div class="liste">${g.liste.map(eintragZeile).join("")}</div>`).join("");
 }
 function listeKlicks(container, eintraege) {
@@ -487,12 +495,15 @@ function erfassen(e = null) {
       <select id="waehrung" aria-label="Währung">${S.meta.waehrungen.map((w) => `<option ${w === d.waehrung ? "selected" : ""}>${w}</option>`).join("")}</select></div>
     <div class="umrechnung" id="umrechnung"></div>
     <div class="vorzeichen"><div class="segment" style="width:240px"><button data-v="aus" class="${erstattung ? "" : "aktiv"}">Ausgabe</button><button data-v="ein" class="${erstattung ? "aktiv" : ""}">Erstattung</button></div></div>
-    <label class="feld"><span>Bezeichnung</span><input id="bezeichnung" autocomplete="off" value="${esc(d.bezeichnung)}" placeholder="z. B. Bäcker, Wez, Geschenk Lia"></label>
+    <label class="feld"><span>Bezeichnung</span><input id="bezeichnung" autocomplete="off" value="${esc(d.bezeichnung)}" placeholder="z. B. Bäcker, Tanken, Geschenk"></label>
     <div id="vorschlaege"></div>
     <div class="katgitter" id="katgitter">${kats.map((k) => `<button data-k="${k.id}" class="${k.id === d.kategorie_id ? "aktiv" : ""}" style="${k.id === d.kategorie_id ? "" : ""}"><span>${esc(k.icon)}</span>${esc(k.name)}</button>`).join("")}</div>
     <div class="zwei"><label class="feld"><span>Datum und Uhrzeit</span><input id="datum" type="datetime-local" value="${esc(d.datum.slice(0, 16))}"></label>
       <label class="feld"><span>Konto</span><select id="konto">${S.meta.konten.filter((k) => !k.archiviert || k.id === d.konto_id).map((k) => `<option value="${k.id}" ${k.id === d.konto_id ? "selected" : ""}>${esc(k.icon)} ${esc(k.name)}</option>`).join("")}</select></label></div>
     <label class="feld"><span>Notiz</span><input id="notiz" value="${esc(d.notiz || "")}" placeholder="optional"></label>
+    <label class="feld"><span>Mein Anteil (leer = voller Betrag)</span><input id="anteil" autocomplete="off" value="${esc(e ? anteilText(e) : "")}" placeholder="z. B. 1/6, 50 % oder 2,67"></label>
+    <div class="anteil-info" id="anteil-info"></div>
+    ${(e && (e.haendler_roh || e.bezeichnung)) || neu ? checkZeile("anteil-regel", true, `<span id="anteil-regel-text"></span>`) : ""}
     <label class="feld" id="kurs-feld" hidden><span>Kurs (EUR je 1 Einheit, leer = automatisch)</span><input id="kurs" inputmode="decimal" value="${e?.kurs && e.waehrung !== "EUR" ? String(e.kurs).replace(".", ",") : ""}"></label>
     ${herkunft}
     ${!neu && e.haendler_roh ? `<label style="display:flex;gap:8px;align-items:center;font-size:14px;margin:8px 2px"><input type="checkbox" id="regel" checked> Für „${esc(e.haendler_roh)}“ künftig genauso einordnen</label>` : ""}
@@ -612,6 +623,34 @@ function erfassen(e = null) {
     }, 180);
   };
 
+  const anteilStart = $("#anteil").value;
+  const anteilZeigen = () => {
+    const t = $("#anteil").value.trim(), b = zahlLesen(betragFeld.value);
+    const regel = $("#anteil-regel")?.closest(".check-zeile");
+    const name = (e && (e.bezeichnung || e.haendler_roh)) || $("#bezeichnung").value.trim();
+    if (regel) {
+      regel.style.display = !t && !anteilStart ? "none" : "";
+      $("#anteil-regel-text").textContent = t
+        ? `Für alle Einträge von „${name || "diesem Händler"}“ übernehmen, auch bisherige`
+        : `Regel für „${name || "diesem Händler"}“ entfernen`;
+    }
+    let info = "";
+    const m = t.replace(/\s|€/g, "").replace(",", ".");
+    if (t && b) {
+      let wert = null;
+      const bruch = m.match(/^(\d+)\/(\d+)$/), proz = m.match(/^(\d+(?:\.\d+)?)%$/);
+      if (bruch && +bruch[2] > 0) wert = Math.abs(b) * Math.min(1, bruch[1] / bruch[2]);
+      else if (proz) wert = Math.abs(b) * Math.min(100, +proz[1]) / 100;
+      else if (!isNaN(+m) && +m > 0) wert = Math.min(Math.abs(b), +m);
+      info = wert == null ? "Als Bruch (1/6), Prozent (50 %) oder Betrag (2,67) angeben" : `Für dich zählen ${geld(wert, $("#waehrung").value)} von ${geld(Math.abs(b), $("#waehrung").value)}.`;
+    }
+    $("#anteil-info").textContent = info;
+  };
+  $("#anteil").addEventListener("input", anteilZeigen);
+  betragFeld.addEventListener("input", anteilZeigen);
+  $("#bezeichnung").addEventListener("input", anteilZeigen);
+  anteilZeigen();
+
   $("#speichern").onclick = async () => {
     const betrag = zahlLesen(betragFeld.value);
     if (!betrag && betrag !== 0 || isNaN(betrag)) { toast("Bitte einen Betrag eingeben"); betragFeld.focus(); return; }
@@ -623,6 +662,10 @@ function erfassen(e = null) {
       konto_id: +$("#konto").value, regel_lernen: $("#regel") ? $("#regel").checked : false,
     };
     if (kurs && daten.waehrung !== "EUR") daten.kurs = kurs;
+    if ($("#anteil").value.trim() !== anteilStart) {
+      daten.anteil_text = $("#anteil").value.trim();
+      daten.anteil_regel = !!$("#anteil-regel")?.checked;
+    }
     try {
       if (neu) {
         await api("eintraege", { method: "POST", body: daten });
@@ -754,6 +797,7 @@ async function mehrAnsicht() {
       <button id="m-dup"><span class="ic">👯</span>Doppelte Einträge finden</button>
       <button id="m-wk"><span class="ic">🔁</span>Wiederkehrende Ausgaben<span class="rechts">Abos, Lastschriften</span></button>
       <button id="m-regeln"><span class="ic">🧠</span>Gelernte Zuordnungen</button>
+      <button id="m-anteile"><span class="ic">➗</span>Eigenanteile</button>
       <button id="m-pruefen"><span class="ic">🔎</span>Zu prüfen<span class="rechts">${m.kennzahlen.pruefen}</span></button>
     </div>
     <div class="abschnitt">Automatik</div>
@@ -779,6 +823,7 @@ async function mehrAnsicht() {
   $("#m-kat").onclick = kategorienVerwalten;
   $("#m-konten").onclick = kontenVerwalten;
   $("#m-regeln").onclick = regelnAnsicht;
+  $("#m-anteile").onclick = anteileAnsicht;
   $("#m-wk").onclick = wiederkehrendAnsicht;
   $("#m-dup").onclick = doppelteAnsicht;
   $("#m-reset").onclick = zuruecksetzenSheet;
@@ -814,7 +859,7 @@ function wkIgnorieren(liste) { try { localStorage.setItem("ausgaben_wk_ignoriert
 function wiederkehrendErkennen(eintraege) {
   const gruppen = new Map();
   for (const e of eintraege) {
-    if (!(e.betrag_eur > 0)) continue;
+    if (!(eigen(e) > 0)) continue;
     const name = (e.bezeichnung || e.haendler_roh || "").trim();
     if (!name) continue;
     const schluessel = name.toLowerCase();
@@ -826,7 +871,7 @@ function wiederkehrendErkennen(eintraege) {
   for (const [schluessel, g] of gruppen) {
     // Mehrere Buchungen am selben Tag zusammenfassen
     const proTag = new Map();
-    for (const e of g.liste) { const t = e.datum.slice(0, 10); proTag.set(t, (proTag.get(t) || 0) + e.betrag_eur); }
+    for (const e of g.liste) { const t = e.datum.slice(0, 10); proTag.set(t, (proTag.get(t) || 0) + eigen(e)); }
     const tage = [...proTag.keys()].sort();
     if (tage.length < 2) continue;
     const betraege = tage.map((t) => proTag.get(t));
@@ -968,6 +1013,16 @@ function kontenVerwalten() {
     await metaLaden(); kontenVerwalten();
   }));
 }
+async function anteileAnsicht() {
+  const r = await api("anteile");
+  unterseite("Eigenanteile", `<p class="leise" style="font-size:14px;margin:0 4px 8px">Für diese Händler zählt nur dein Anteil, etwa bei einem geteilten Abo. Festlegen kannst du das in einem Eintrag unter „Mein Anteil“.</p>
+    <div class="mehr-liste">${r.map((x) => `<div class="zeile"><span style="min-width:0"><b>${esc(x.name || x.muster)}</b><br><small class="leise">${x.art === "bruch" ? `Anteil ${esc(x.text)}` : `fest ${esc(x.text)}`}</small></span><button class="knopf gefahr klein rechts" data-a="${x.id}" style="width:auto">Entfernen</button></div>`).join("") || '<div class="leer">Noch keine Eigenanteile festgelegt.</div>'}</div>`);
+  $$("[data-a]").forEach((b) => (b.onclick = async () => {
+    const zurueck = confirm("Sollen auch die bisherigen Einträge dieses Händlers wieder mit dem vollen Betrag zählen?\n\nOK = ja, Abbrechen = nur künftige Einträge");
+    await api(`anteile/${b.dataset.a}?rueckwirkend=${zurueck}`, { method: "DELETE" }); toast("Eigenanteil entfernt"); anteileAnsicht();
+  }));
+}
+
 async function regelnAnsicht() {
   const r = await api("regeln");
   unterseite("Gelernte Zuordnungen", `<p class="leise" style="font-size:14px;margin:0 4px 8px">Entstehen, wenn du die Kategorie eines automatisch erfassten Umsatzes änderst oder bestätigst. Sie haben Vorrang vor Verlauf und KI.</p>
