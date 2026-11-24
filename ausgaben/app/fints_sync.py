@@ -299,6 +299,8 @@ class Job(threading.Thread):
 
     # ---- Ablauf
     def run(self):
+        sammler = _Bankmeldungen()
+        logging.getLogger("fints.client").addHandler(sammler)
         try:
             bank = bank_laden(self.bank_id)
             pin = self.pin_einmal or bank["pin"]
@@ -307,7 +309,7 @@ class Job(threading.Thread):
             if not produkt_id():
                 raise Abbruch("FinTS-Produkt-ID fehlt (Mehr → Banken)")
             # Fehlersuche: python-fints schreibt die Nachrichten (PIN ausgeblendet) ins Add-on-Protokoll
-            logging.getLogger("fints").setLevel(logging.DEBUG if db.einstellung("fints_protokoll") == "1" else logging.WARNING)
+            logging.getLogger("fints").setLevel(logging.DEBUG if db.einstellung("fints_protokoll") == "1" else logging.INFO)
             log.info("FinTS-Abruf %s: BLZ %s, URL %s, Anmeldename %s Zeichen, Produkt-ID %s Zeichen",
                      bank["name"], bank["blz"], bank["url"], len(bank["login"] or ""), len(produkt_id()))
             Klasse = _client_klasse()
@@ -332,8 +334,9 @@ class Job(threading.Thread):
             self.zustand, self.meldung = "fehler", str(e)
         except Exception as e:  # noqa: BLE001
             log.exception("FinTS-Auftrag fehlgeschlagen")
-            self.zustand, self.meldung = "fehler", _fehlertext(e)
+            self.zustand, self.meldung = "fehler", sammler.erklaerung() or _fehlertext(e)
         finally:
+            logging.getLogger("fints.client").removeHandler(sammler)
             self.tan_art, self.tan_bild = None, None
             self.beendet = db.jetzt_iso()
             db.x("UPDATE banken SET meldung=? WHERE id=?",
@@ -444,6 +447,41 @@ def _konto_name(a):
     if a.iban:
         return f"{a.iban[:4]} … {a.iban[-4:]}" + (f" ({a.subaccount})" if a.subaccount else "")
     return f"Konto {a.accountnumber}" + (f"/{a.subaccount}" if a.subaccount else "")
+
+
+BANK_CODES = {
+    "9078": "Die Bank kennt die Produkt-ID nicht (noch nicht freigeschaltet oder falsch eingetragen)",
+    "9010": "Die Bank lehnt die Anfrage ab",
+    "9931": "Anmeldename oder PIN falsch",
+    "9942": "PIN falsch",
+    "9910": "Anmeldung abgelehnt",
+    "9930": "Anmeldename unbekannt",
+    "3938": "Zugang gesperrt",
+    "9800": "Die Bank hat den Dialog abgebrochen",
+}
+
+
+class _Bankmeldungen(logging.Handler):
+    """Sammelt die Antwortcodes der Bank (python-fints loggt sie als 'Dialog response: ...')."""
+
+    def __init__(self):
+        super().__init__(level=logging.INFO)
+        self.codes = []
+
+    def emit(self, record):
+        code = getattr(record, "fints_response_code", None)
+        if code and code[0] in "39":
+            self.codes.append((code, getattr(record, "fints_response_text", "") or ""))
+
+    def erklaerung(self):
+        fehler = [(c, t) for c, t in self.codes if c.startswith("9")] or self.codes
+        if not fehler:
+            return ""
+        teile = []
+        for c, t in fehler[:4]:
+            hinweis = BANK_CODES.get(c)
+            teile.append(f"{c} {t}".strip() + (f" ({hinweis})" if hinweis else ""))
+        return "Bank meldet: " + "; ".join(dict.fromkeys(teile))
 
 
 def _fehlertext(e):

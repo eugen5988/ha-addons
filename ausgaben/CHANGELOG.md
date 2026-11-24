@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.8.1
+
+- Banken: Bei einem Fehler zeigt die App die Meldungen der Bank mit Code und Erklärung
+  (z. B. „9078 Produkt nicht registriert“) statt eines Folgefehlers.
+
 ## 1.8.0
 
 - Offline-Betrieb der iPhone-Web-App: Sie startet ohne Netz mit dem letzten Stand. Neue Ausgaben und
