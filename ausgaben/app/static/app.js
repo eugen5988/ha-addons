@@ -73,8 +73,15 @@ async function api(pfad, opt = {}) {
   if (token) init.headers["X-Ausgaben-Token"] = token;
   if (opt.body instanceof FormData) init.body = opt.body;
   else if (opt.body !== undefined) { init.body = JSON.stringify(opt.body); init.headers["Content-Type"] = "application/json"; }
+  // Ohne Netz (z. B. Flugmodus mit VPN) haengen Anfragen sonst sehr lange: Zeitgrenze setzen.
+  const abbruch = new AbortController();
+  // Lange Vorgaenge (Import, Bankabruf, KI) ohne Grenze; Lesen 30 s; im Offline-Zustand kurz.
+  const grenze = opt.zeitlimit ?? (S.offline ? 4000 : (init.method === "GET" ? 30000 : null));
+  const timer = grenze ? setTimeout(() => abbruch.abort(), grenze) : null;
+  init.signal = abbruch.signal;
   let r;
   try { r = await fetch("api/" + pfad, init); } catch (_) { offlineMelden(null); throw new OfflineFehler(); }
+  finally { clearTimeout(timer); }
   const offlineStand = r.headers.get("X-Ausgaben-Offline");
   if (offlineStand !== null) { offlineMelden(+offlineStand || null); if (r.status === 503) throw new OfflineFehler(); }
   else if (r.status !== 503) onlineMelden();
@@ -728,7 +735,7 @@ function erfassen(e = null) {
       let bild = null;
       try {
         bild = await bildVerkleinern(datei);
-        const r = await api("beleg", { method: "POST", body: { bild } });
+        const r = await api("beleg", { method: "POST", body: { bild }, zeitlimit: S.offline ? 4000 : 90000 });
         if ($("#beleg-info")) belegUebernehmen(r, vorschau);
       } catch (err) {
         if (err.offline && bild) {
@@ -802,6 +809,8 @@ function erfassen(e = null) {
   anteilZeigen();
 
   $("#speichern").onclick = async () => {
+    const knopf = $("#speichern");
+    if (knopf.disabled) return;
     const betrag = zahlLesen(betragFeld.value);
     if (!betrag && betrag !== 0 || isNaN(betrag)) { toast("Bitte einen Betrag eingeben"); betragFeld.focus(); return; }
     if (!katId) { toast("Bitte eine Kategorie wählen"); return; }
@@ -817,11 +826,13 @@ function erfassen(e = null) {
       daten.anteil_regel = !!$("#anteil-regel")?.checked;
       daten.anteil_rueckwirkend = daten.anteil_regel && !!$("#anteil-alle")?.checked;
     }
+    knopf.disabled = true; knopf.textContent = "…";
+    const freigeben = () => { if ($("#speichern")) { knopf.disabled = false; knopf.textContent = "Sichern"; } };
     try {
       if (neu) {
         daten.client_ref = neueRef();
         try {
-          await api("eintraege", { method: "POST", body: daten });
+          await api("eintraege", { method: "POST", body: daten, zeitlimit: 8000 });
         } catch (err) {
           if (!err.offline) throw err;
           inWarteschlange({ art: "eintrag", daten });
@@ -838,7 +849,7 @@ function erfassen(e = null) {
       sheetSchliessen();
       toast(neu ? `Gesichert: ${daten.bezeichnung || kat(katId).name}, ${geld(daten.betrag, daten.waehrung)}` : "Änderung gesichert");
       await metaLaden(); neuZeichnen();
-    } catch (err) { toast(err.message); }
+    } catch (err) { toast(err.message); } finally { freigeben(); }
   };
   $("#loeschen")?.addEventListener("click", async () => {
     if (!confirm(`„${e.bezeichnung || e.haendler_roh}“ über ${geld(e.betrag, e.waehrung)} löschen?`)) return;

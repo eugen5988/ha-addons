@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.8.2
+
+- Offline: „Sichern“ hängt nicht mehr, wenn das iPhone keine Verbindung hat, aber ein VPN wie Tailscale
+  eingeschaltet ist. Nach wenigen Sekunden wird der Eintrag auf dem Gerät gespeichert.
+- Während des Sicherns zeigt der Knopf „…“ und lässt sich nicht doppelt auslösen.
+
 ## 1.8.1
 
 - Banken: Bei einem Fehler zeigt die App die Meldungen der Bank mit Code und Erklärung
