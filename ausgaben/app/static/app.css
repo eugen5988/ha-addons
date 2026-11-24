@@ -360,3 +360,13 @@ details.erweitert[open] summary::before { transform: rotate(90deg); }
 .anleitung .knopfreihe { margin-top: 8px; }
 a.knopf { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
 html.mit-offline-leiste #ansicht { margin-top: 30px; }
+
+/* Ziehen zum Aktualisieren */
+#ziehen { position: fixed; left: 50%; top: calc(env(safe-area-inset-top) + 6px); z-index: 30; width: 34px; height: 34px;
+  display: grid; place-items: center; border-radius: 50%; background: var(--flaeche); box-shadow: 0 2px 8px rgba(0,0,0,.12);
+  opacity: 0; transform: translate(-50%, 0); pointer-events: none; }
+#ziehen circle { stroke: var(--leise); transition: stroke .15s; }
+#ziehen.bereit circle { stroke: var(--akzent); }
+#ziehen.laedt svg { animation: drehen .8s linear infinite; }
+#ziehen.laedt circle { stroke: var(--akzent); stroke-dasharray: 60 100 !important; }
+html.mit-offline-leiste #ziehen { top: calc(env(safe-area-inset-top) + 36px); }

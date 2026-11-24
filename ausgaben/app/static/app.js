@@ -1994,6 +1994,120 @@ function sheetSchliessen() {
 $("#sheet-hintergrund").onclick = sheetSchliessen;
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#sheet").hidden) sheetSchliessen(); });
 
+// ---------------------------------------------------------------- Ziehen zum Aktualisieren
+// Wie in iOS-Apps: oben ganz nach unten ziehen, loslassen ruft Trade Republic und die Banken ab.
+const ZIEH_SCHWELLE = 72;
+// Fühlbares Feedback. iOS-Safari kennt navigator.vibrate nicht; ab iOS 18 löst das Umschalten
+// eines Schalters (<input type=checkbox switch>) aber das System-Haptik-Feedback aus.
+function haptik() {
+  try {
+    if (navigator.vibrate && navigator.vibrate(12)) return;
+    const l = document.createElement("label");
+    const i = document.createElement("input");
+    i.type = "checkbox"; i.setAttribute("switch", "");
+    l.appendChild(i); l.style.display = "none";
+    document.body.appendChild(l); l.click(); l.remove();
+  } catch (_) { /* kein Feedback möglich */ }
+}
+function ziehenAnzeige() {
+  let el = $("#ziehen");
+  if (!el) {
+    el = document.createElement("div"); el.id = "ziehen";
+    el.innerHTML = '<svg viewBox="0 0 32 32" width="30" height="30"><circle cx="16" cy="16" r="11" fill="none" stroke-width="3" stroke-linecap="round" pathLength="100"/></svg>';
+    document.body.appendChild(el);
+  }
+  return el;
+}
+let ziehtGerade = false, aktualisiertGerade = false;
+function ziehenAktivieren() {
+  let y0 = 0, x0 = 0, zug = 0, richtung = null, aktiv = false, gefuehlt = false;
+  const erlaubt = () => ["uebersicht", "eintraege", "verlauf", "pruefen"].includes(S.tab) && $("#sheet").hidden && !aktualisiertGerade;
+  const setzen = (px, mitUebergang) => {
+    const el = ziehenAnzeige();
+    const anteil = Math.min(1, px / ZIEH_SCHWELLE);
+    el.style.transition = ansicht.style.transition = mitUebergang ? "transform .25s ease, opacity .25s ease" : "none";
+    ansicht.style.transform = px ? `translateY(${px}px)` : "";
+    el.style.opacity = px ? Math.min(1, anteil * 1.4) : 0;
+    el.style.transform = `translate(-50%, ${Math.min(px, ZIEH_SCHWELLE) * 0.55}px) rotate(${anteil * 270}deg)`;
+    el.querySelector("circle").style.strokeDasharray = `${Math.max(4, anteil * 80)} 100`;
+    el.classList.toggle("bereit", anteil >= 1);
+  };
+  document.addEventListener("touchstart", (ev) => {
+    aktiv = erlaubt() && window.scrollY <= 0 && !ev.target.closest(".chips, .wisch.offen");
+    if (!aktiv) return;
+    y0 = ev.touches[0].clientY; x0 = ev.touches[0].clientX; zug = 0; richtung = null; gefuehlt = false;
+  }, { passive: true });
+  document.addEventListener("touchmove", (ev) => {
+    if (!aktiv) return;
+    const dy = ev.touches[0].clientY - y0, dx = ev.touches[0].clientX - x0;
+    if (!richtung) {
+      if (Math.abs(dy) < 6 && Math.abs(dx) < 6) return;
+      richtung = dy > 0 && Math.abs(dy) > Math.abs(dx) && window.scrollY <= 0 ? "runter" : "anders";
+      if (richtung !== "runter") { aktiv = false; return; }
+    }
+    ev.preventDefault();
+    ziehtGerade = true;
+    zug = dy < ZIEH_SCHWELLE ? dy : ZIEH_SCHWELLE + (dy - ZIEH_SCHWELLE) * 0.35; // weicher Widerstand
+    zug = Math.max(0, zug * 0.75);
+    setzen(zug, false);
+    if (!gefuehlt && zug >= ZIEH_SCHWELLE) { gefuehlt = true; haptik(); }
+    if (gefuehlt && zug < ZIEH_SCHWELLE * 0.8) gefuehlt = false;
+  }, { passive: false });
+  const ende = () => {
+    if (!aktiv || richtung !== "runter") { aktiv = false; return; }
+    aktiv = false;
+    setTimeout(() => (ziehtGerade = false), 50);
+    if (zug >= ZIEH_SCHWELLE) {
+      setzen(ZIEH_SCHWELLE * 0.75, true);
+      const el = ziehenAnzeige(); el.classList.add("laedt");
+      allesAktualisieren().finally(() => { el.classList.remove("laedt"); setzen(0, true); });
+    } else setzen(0, true);
+  };
+  document.addEventListener("touchend", ende);
+  document.addEventListener("touchcancel", ende);
+}
+async function allesAktualisieren() {
+  aktualisiertGerade = true;
+  try {
+    const r = await api("aktualisieren", { method: "POST", zeitlimit: 60000 });
+    const teile = [];
+    if (r.tr) teile.push(["login_noetig", "fehler"].includes(r.tr.zustand) ? `Trade Republic: ${r.tr.meldung || "Anmeldung nötig"}`
+      : r.tr.zustand === "laeuft" ? r.tr.meldung : `Trade Republic: ${r.tr.neu ? r.tr.neu + " neu" : "nichts Neues"}`);
+    if (r.banken.length) teile.push(`${r.banken.map((b) => b.name).join(", ")} ${r.banken.length === 1 ? "wird" : "werden"} abgerufen`);
+    if (!r.tr && !r.banken.length) teile.push("Keine Bank mit gespeicherter PIN eingerichtet");
+    toast(teile.join(" · "));
+    try { await metaLaden(); neuZeichnen(); } catch (_) { /* egal */ }
+    if (r.banken.length) bankenBeobachten(r.banken.map((b) => b.id));
+  } catch (err) {
+    toast(err.offline ? "Offline – Aktualisieren geht nur mit Verbindung" : err.message);
+  } finally {
+    aktualisiertGerade = false;
+  }
+}
+// Hintergrund-Abrufe der Banken verfolgen und melden, wenn fertig oder eine Freigabe nötig ist.
+async function bankenBeobachten(ids, bis = Date.now() + 6 * 60000) {
+  const gemeldet = new Set();
+  while (ids.length && Date.now() < bis) {
+    await new Promise((res) => setTimeout(res, 3000));
+    let banken;
+    try { banken = (await api("banken")).banken; } catch (_) { continue; }
+    for (const b of banken.filter((x) => ids.includes(x.id))) {
+      const j = b.job || {};
+      if (j.zustand === "tan_noetig" && !gemeldet.has(b.id)) {
+        gemeldet.add(b.id);
+        toast(j.tan_art === "app" ? `${b.name}: bitte in der Banking-App freigeben` : `${b.name} braucht eine TAN`,
+          j.tan_art === "app" ? null : { label: "Öffnen", fn: () => { S.tab = "mehr"; bankDetail(b.id); } });
+      } else if (j.zustand === "fertig" || j.zustand === "fehler") {
+        ids = ids.filter((i) => i !== b.id);
+        if (j.zustand === "fehler") toast(`${b.name}: ${j.meldung}`);
+        else toast(`${b.name}: ${j.ergebnis?.neu ? j.ergebnis.neu + " neue Umsätze" : "nichts Neues"}`);
+        if (j.ergebnis?.neu) { try { await metaLaden(); neuZeichnen(); } catch (_) { /* egal */ } }
+      }
+    }
+  }
+}
+ziehenAktivieren();
+
 const ANSICHTEN = { uebersicht, eintraege: eintraegeAnsicht, verlauf: verlaufAnsicht, mehr: mehrAnsicht, pruefen: pruefenAnsicht };
 function tabWechseln(tab) {
   S.tab = tab;

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.11.0
+
+- Ziehen zum Aktualisieren: In Übersicht, Einträge, Verlauf und Prüfen oben nach unten ziehen und loslassen. Trade Republic wird sofort abgerufen, Banken mit gespeicherter PIN im Hintergrund; das Ergebnis erscheint als Meldung, auch wenn eine Freigabe in der Banking-App nötig ist.
+- Fühlbares Feedback (Haptik) beim Erreichen der Auslöseschwelle, auf dem iPhone ab iOS 18.
+
 ## 1.10.0
 
 - Offline erfasste Einträge und Kassenbon-Fotos, die noch auf Übertragung warten, stehen jetzt oben in „Einträge“ und in der Übersicht (Abschnitt „Noch nicht übertragen“, Marke „wartet“).

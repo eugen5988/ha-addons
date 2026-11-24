@@ -722,6 +722,28 @@ def bank_tan(bank_id: int, d: dict = Body(...)):
     return j.status()
 
 
+@app.post("/api/aktualisieren")
+async def alles_aktualisieren():
+    """Zum Aktualisieren gezogen: Trade Republic sofort abrufen, Banken mit gespeicherter PIN im Hintergrund."""
+    banken = []
+    for r in db.q("SELECT id, name FROM banken WHERE aktiv=1 AND COALESCE(pin,'')<>'' ORDER BY id"):
+        if fints_sync.produkt_id():
+            banken.append({"id": r["id"], "name": r["name"], **fints_sync.job_starten(r["id"], "abruf").status()})
+    tr = None
+    if tr_sync.eingerichtet():
+        try:
+            neue = await asyncio.wait_for(asyncio.to_thread(tr_sync.synchronisiere, False, True), 40)
+            for i in neue:
+                e = db.q1(auswertung.BASIS_SELECT + "WHERE e.id=?", (i,))
+                await asyncio.to_thread(auswertung.ereignis_neue_ausgabe, e)
+            k = tr_sync.konfig()
+            tr = {"neu": len(neue), "zustand": k["zustand"], "meldung": k.get("letzte_meldung") or ""}
+        except asyncio.TimeoutError:
+            tr = {"neu": 0, "zustand": "laeuft", "meldung": "Trade Republic antwortet langsam, der Abruf läuft weiter"}
+        sensoren_aktualisieren()
+    return {"tr": tr, "banken": banken}
+
+
 @app.get("/api/nachholen")
 def nachholen(bank_id: int = 0):
     return fints_sync.nachholen_liste(bank_id or None)
