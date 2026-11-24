@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.9.0
+
+- Einträge per Wischen nach links löschen, wie in iOS: kurz wischen zeigt „Löschen“, ganz durchwischen
+  löscht sofort.
+
 ## 1.8.2
 
 - Offline: „Sichern“ hängt nicht mehr, wenn das iPhone keine Verbindung hat, aber ein VPN wie Tailscale

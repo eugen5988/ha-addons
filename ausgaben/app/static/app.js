@@ -466,12 +466,12 @@ function eintragZeile(e, mitDatum = false) {
   const gut = e.betrag < 0;
   const datumText = mitDatum ? ausIso(e.datum).toLocaleDateString("de-DE", { day: "numeric", month: "short", year: "2-digit" }) : "";
   const unter = [datumText, k ? k.name : "Ohne Kategorie", e.konto && e.konto !== "Altdaten (Next)" ? e.konto : "", e.datum.slice(11, 16) !== "00:00" ? e.datum.slice(11, 16) : ""].filter(Boolean).join(", ");
-  return `<button class="eintrag" data-id="${e.id}">
+  return `<div class="wisch" data-id="${e.id}"><button class="wisch-loeschen" tabindex="-1">Löschen</button><button class="eintrag" data-id="${e.id}">
     <span class="ic" style="${icFarbe(k?.farbe || "#9AA3AE")}">${esc(k?.icon || "❔")}</span>
     <span style="min-width:0"><span class="titel">${esc(e.bezeichnung || e.haendler_roh || "Ohne Bezeichnung")}${e.pruefen ? '<span class="marke pruefen">prüfen</span>' : ""}</span>
       <span class="unter">${esc(unter)}${e.notiz ? " – " + esc(e.notiz) : ""}</span></span>
     <span class="wert zahl ${gut ? "gut" : ""}">${gut ? "+" + geld(-(eigen(e) ?? 0)) : geld(eigen(e) ?? 0)}${geteilt(e) ? `<small>von ${geld(e.betrag_eur ?? e.betrag, e.betrag_eur != null ? "EUR" : e.waehrung)}</small>` : fremd ? `<small>${geld(e.betrag, e.waehrung)}</small>` : ""}${e.betrag_eur == null ? "<small>Kurs fehlt</small>" : ""}</span>
-  </button>`;
+  </button></div>`;
 }
 function eintragsListe(eintraege, nachTag = true) {
   if (!eintraege.length) return '<div class="leer">Keine Einträge.</div>';
@@ -486,7 +486,73 @@ function eintragsListe(eintraege, nachTag = true) {
     <div class="liste">${g.liste.map(eintragZeile).join("")}</div>`).join("");
 }
 function listeKlicks(container, eintraege) {
-  $$(".eintrag", container).forEach((b) => (b.onclick = () => erfassen(eintraege.find((e) => e.id === +b.dataset.id))));
+  $$(".eintrag", container).forEach((b) => (b.onclick = () => {
+    const w = b.closest(".wisch");
+    if (w && (w.dataset.gewischt || w.classList.contains("offen"))) { wischSchliessen(w); return; }
+    erfassen(eintraege.find((e) => e.id === +b.dataset.id));
+  }));
+  wischenAktivieren(container);
+}
+
+// Wischen nach links zum Löschen (wie in iOS): kurz wischen zeigt „Löschen“, ganz durchwischen löscht sofort.
+const WISCH_BREITE = 88;
+let wischOffen = null;
+function wischSchliessen(w) {
+  if (!w) return;
+  w.querySelector(".eintrag").style.transform = "";
+  w.classList.remove("offen", "voll");
+  if (wischOffen === w) wischOffen = null;
+}
+function wischenAktivieren(container) {
+  $$(".wisch", container).forEach((w) => {
+    const zeile = w.querySelector(".eintrag");
+    let x0 = 0, y0 = 0, dx = 0, richtung = null, basis = 0;
+    zeile.addEventListener("touchstart", (ev) => {
+      const t = ev.touches[0];
+      x0 = t.clientX; y0 = t.clientY; dx = 0; richtung = null;
+      basis = w.classList.contains("offen") ? -WISCH_BREITE : 0;
+      if (wischOffen && wischOffen !== w) wischSchliessen(wischOffen);
+      zeile.style.transition = "none";
+    }, { passive: true });
+    zeile.addEventListener("touchmove", (ev) => {
+      const t = ev.touches[0], mx = t.clientX - x0, my = t.clientY - y0;
+      if (!richtung) {
+        if (Math.abs(mx) < 8 && Math.abs(my) < 8) return;
+        richtung = Math.abs(mx) > Math.abs(my) ? "h" : "v";
+      }
+      if (richtung !== "h") return;
+      ev.preventDefault();
+      dx = Math.min(0, basis + mx);
+      zeile.style.transform = `translateX(${dx}px)`;
+      w.classList.toggle("voll", dx < -w.offsetWidth * 0.6);
+    }, { passive: false });
+    const ende = () => {
+      zeile.style.transition = "";
+      if (richtung !== "h") return;
+      w.dataset.gewischt = "1";
+      setTimeout(() => delete w.dataset.gewischt, 80);
+      if (dx < -w.offsetWidth * 0.6) wischLoeschen(w);
+      else if (dx < -WISCH_BREITE / 2) { zeile.style.transform = `translateX(${-WISCH_BREITE}px)`; w.classList.add("offen"); wischOffen = w; }
+      else wischSchliessen(w);
+    };
+    zeile.addEventListener("touchend", ende);
+    zeile.addEventListener("touchcancel", ende);
+    w.querySelector(".wisch-loeschen").onclick = (ev) => { ev.stopPropagation(); wischLoeschen(w); };
+  });
+}
+async function wischLoeschen(w) {
+  const zeile = w.querySelector(".eintrag");
+  zeile.style.transform = `translateX(-${w.offsetWidth}px)`;
+  try {
+    await api(`eintraege/${w.dataset.id}`, { method: "DELETE" });
+  } catch (err) {
+    toast(err.message); wischSchliessen(w); return;
+  }
+  w.style.height = w.offsetHeight + "px";
+  requestAnimationFrame(() => w.classList.add("weg"));
+  wischOffen = null;
+  toast("Eintrag gelöscht");
+  setTimeout(async () => { try { await metaLaden(); neuZeichnen(); } catch (_) { /* egal */ } }, 320);
 }
 
 // ---------------------------------------------------------------- Eintraege + Suche
