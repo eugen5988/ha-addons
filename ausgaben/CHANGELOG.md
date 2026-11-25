@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.15.4
+
+- Update-Hinweis zeigt nur noch die Neuerungen seit der installierten Version (vorher teils das halbe Änderungsprotokoll). Bei mehreren Versionen steht darüber „Neu in …“.
+
 ## 1.15.3
 
 - Neu unter Mehr → Darstellung: **Vibration** mit zwei Varianten zum Testen (und „aus“). Die gewählte Variante wird beim Herunterziehen zum Aktualisieren verwendet.

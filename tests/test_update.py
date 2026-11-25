@@ -62,7 +62,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."
 from app import aktualisierung  # noqa: E402
 
 aktualisierung.github_version = lambda: "1.1.0"  # ohne Netz
-aktualisierung._changelog_neu = lambda i, n: [{"version": n, "punkte": ["Neu"]}]
+CHANGELOG = "# Changelog\n\n## 1.1.0\n\n- Neu\n\n## 1.0.1\n\n- Klein\n\n## 1.0.0\n\n- Alt\n\n## 0.9.0\n\n- Uralt\n"
+aktualisierung._repo_datei = lambda name: CHANGELOG
 aktualisierung.time = type("T", (), {"time": staticmethod(time.time), "sleep": staticmethod(lambda s: None)})
 
 
@@ -82,7 +83,10 @@ s = aktualisierung.pruefen(True)
 pruef("Neuladen ruft homeassistant.update_entity", any(a[1] == "/services/homeassistant/update_entity"
                                                        and a[2] == {"entity_id": "update.ausgaben_update"} for a in AUFRUFE))
 pruef("Danach Update verfügbar (auch bei verzögerter Auffrischung)", s["verfuegbar"] is True and s["neueste"] == "1.1.0")
-pruef("Neuerungen dabei", s["neu"] == [{"version": "1.1.0", "punkte": ["Neu"]}])
+pruef("Neuerungen nur nach der installierten Version", [x["version"] for x in s["neu"]] == ["1.1.0", "1.0.1"])
+pruef("Veralteter Changelog ohne neueste Version wird verworfen", aktualisierung._changelog_neu("1.0.0", "1.2.0") == [])
+pruef("Installierte Version fehlt im Changelog: trotzdem nur Neueres",
+      [x["version"] for x in aktualisierung._changelog_neu("1.0.5", "1.1.0")] == ["1.1.0"])
 pruef("Öffentlicher Stand ohne Entität", "entitaet" not in aktualisierung.oeffentlich())
 
 aktualisierung.installieren(mit_backup=True)

@@ -83,23 +83,34 @@ def github_version():
         return None
 
 
+def _vtupel(v):
+    """'1.15.2' -> (1, 15, 2); Unlesbares wird ganz klein einsortiert."""
+    try:
+        return tuple(int(x) for x in re.findall(r"\d+", v or ""))
+    except ValueError:
+        return ()
+
+
 def _changelog_neu(installiert, neueste):
-    """Aenderungen zwischen installierter und neuester Version aus dem GitHub-Repo (beste Muehe)."""
+    """Aenderungen nach der installierten bis einschliesslich der neuesten Version (beste Muehe).
+    Nur wenn der Changelog die neueste Version enthaelt; sonst [] (GitHub liefert manchmal kurz einen alten Stand)."""
     try:
         text = _repo_datei("CHANGELOG.md") or ""
     except Exception:  # noqa: BLE001
         return []
+    von, bis = _vtupel(installiert), _vtupel(neueste)
     eintraege, aktuell = [], None
     for zeile in text.splitlines():
         if zeile.startswith("## "):
             v = zeile[3:].strip()
-            if v == installiert:
-                break
-            aktuell = {"version": v, "punkte": []}
-            eintraege.append(aktuell)
+            aktuell = {"version": v, "punkte": []} if von < _vtupel(v) <= bis else None
+            if aktuell:
+                eintraege.append(aktuell)
         elif aktuell and zeile.startswith("- "):
             aktuell["punkte"].append(zeile[2:].strip())
-    return eintraege if neueste else []
+    if not any(x["version"] == neueste for x in eintraege):
+        return []
+    return eintraege
 
 
 def pruefen(neu_laden=False):
@@ -139,7 +150,8 @@ def pruefen(neu_laden=False):
             alt_neueste = stand.get("neueste")
             stand.update(geprueft=time.time(), installiert=installiert, neueste=neueste, verfuegbar=verfuegbar,
                          laeuft=bool(a.get("in_progress")), meldung="")
-            if verfuegbar and (neueste != alt_neueste or not stand["neu"]):
+            if verfuegbar and (neueste != alt_neueste or installiert != stand.get("neu_fuer") or not stand["neu"]):
+                stand["neu_fuer"] = installiert
                 stand["neu"] = _changelog_neu(installiert, neueste)
             elif not verfuegbar:
                 stand["neu"] = []

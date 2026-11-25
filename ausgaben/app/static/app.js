@@ -1190,7 +1190,7 @@ async function versionAnsicht() {
   const updateBox = u.laeuft ? `<div class="update-box"><b>Update läuft …</b><p class="leise">Das Add-on wird gerade aktualisiert und startet danach neu.</p></div>`
     : u.verfuegbar ? `<div class="update-box neu">
         <div class="leise">Update verfügbar</div><div class="version-nr">${esc(u.neueste)}</div>
-        ${(u.neu || []).length ? `<ul>${u.neu.flatMap((a) => a.punkte.map((p) => `<li>${mdKurz(p)}</li>`)).join("")}</ul>` : ""}
+        ${(u.neu || []).map((a) => `${u.neu.length > 1 ? `<div class="leise" style="font-size:13px;margin-top:8px">Neu in ${esc(a.version)}</div>` : ""}<ul>${a.punkte.map((p) => `<li>${mdKurz(p)}</li>`).join("")}</ul>`).join("")}
         ${checkZeile("up-backup", false, "Vorher ein Backup des Add-ons anlegen (dauert länger)")}
         <div class="knopfreihe"><button class="knopf" id="up-los">Jetzt aktualisieren</button></div></div>`
     : `<div class="update-box"><div style="display:flex;align-items:center;gap:10px"><span style="font-size:22px">${u.meldung ? "⚠️" : geprueft ? "✅" : "🔎"}</span><div><b>${u.meldung ? "Prüfung nicht möglich" : geprueft ? "Du bist auf dem neuesten Stand" : "Noch nicht nach Updates gesucht"}</b><div class="leise" style="font-size:13px">${esc(u.meldung || geprueftText)}</div></div></div>
