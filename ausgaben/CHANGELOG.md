@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.12.1
+
+- Ziehen zum Aktualisieren: Ist die Trade-Republic-Sitzung abgelaufen, startet die Anmeldung gleich mit (gespeicherte PIN, Bestätigung in der Trade-Republic-App). Danach werden die Umsätze abgerufen und die Anzahl neuer Einträge gemeldet.
+
 ## 1.12.0
 
 - Neue Kategorie direkt beim Erfassen anlegen: Kachel „＋ Neue Kategorie“ am Ende des Kategorienrasters (Symbol und Name), die neue Kategorie ist danach gleich ausgewählt. Farbe und KI-Beschreibung lassen sich später unter Mehr → Kategorien ergänzen.

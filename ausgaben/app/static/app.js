@@ -2107,13 +2107,35 @@ async function allesAktualisieren() {
       : r.tr.zustand === "laeuft" ? r.tr.meldung : `Trade Republic: ${r.tr.neu ? r.tr.neu + " neu" : "nichts Neues"}`);
     if (r.banken.length) teile.push(`${r.banken.map((b) => b.name).join(", ")} ${r.banken.length === 1 ? "wird" : "werden"} abgerufen`);
     if (!r.tr && !r.banken.length) teile.push("Keine Bank mit gespeicherter PIN eingerichtet");
+    const trLogin = r.tr?.zustand === "login_noetig";
+    if (trLogin) teile[0] = "Trade Republic: Anmeldung abgelaufen, melde neu an";
     toast(teile.join(" · "));
     try { await metaLaden(); neuZeichnen(); } catch (_) { /* egal */ }
     if (r.banken.length) bankenBeobachten(r.banken.map((b) => b.id));
+    // Sitzung abgelaufen: gleich neu anmelden (gespeicherte PIN, Bestätigung in der TR-App), danach Abruf verfolgen
+    if (trLogin) {
+      const vorher = (await api("tr").catch(() => ({}))).letzter_abruf;
+      trAnmelden("", null);
+      trBeobachten(vorher);
+    }
   } catch (err) {
     toast(err.offline ? "Offline – Aktualisieren geht nur mit Verbindung" : err.message);
   } finally {
     aktualisiertGerade = false;
+  }
+}
+// Nach einer Neuanmeldung ruft der Server Trade Republic von selbst ab; hier auf das Ergebnis warten.
+async function trBeobachten(vorher, bis = Date.now() + 5 * 60000) {
+  while (Date.now() < bis) {
+    await new Promise((res) => setTimeout(res, 3000));
+    let k;
+    try { k = await api("tr"); } catch (_) { continue; }
+    if (k.login?.zustand === "fehler" || k.login?.zustand === "pin_noetig" && $("#sheet").hidden) return;
+    if (k.letzter_abruf && k.letzter_abruf !== vorher) {
+      toast(`Trade Republic: ${k.neu_letzter_abruf ? k.neu_letzter_abruf + " neu" : "nichts Neues"}`);
+      try { await metaLaden(); neuZeichnen(); } catch (_) { /* egal */ }
+      return;
+    }
   }
 }
 // Hintergrund-Abrufe der Banken verfolgen und melden, wenn fertig oder eine Freigabe nötig ist.
