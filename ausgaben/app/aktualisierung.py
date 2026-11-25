@@ -18,7 +18,6 @@ import httpx
 log = logging.getLogger("ausgaben.aktualisierung")
 
 CORE = os.environ.get("AUSGABEN_CORE", "http://supervisor/core/api")  # fuer Tests ueberschreibbar
-RAW_CHANGELOG = "https://raw.githubusercontent.com/{owner}/{repo}/main/{ordner}/CHANGELOG.md"
 
 stand = {"geprueft": None, "installiert": None, "neueste": None, "verfuegbar": False,
          "laeuft": False, "entitaet": None, "meldung": "", "neu": []}
@@ -65,16 +64,29 @@ def _entitaet_finden():
     return None
 
 
+def _repo_datei(name):
+    """Datei aus dem GitHub-Repo des Add-ons (Adresse aus config.yaml), beste Muehe."""
+    ordner = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    konfig = open(os.path.join(ordner, "config.yaml"), encoding="utf-8").read()
+    m = re.search(r"github\.com/([^/\s]+)/([^/\s]+)/tree/([^/\s]+)/([^\s]+)", konfig)
+    if not m:
+        return None
+    url = f"https://raw.githubusercontent.com/{m.group(1)}/{m.group(2)}/{m.group(3)}/{m.group(4).strip('/')}/{name}?t={int(time.time())}"
+    return httpx.get(url, timeout=10, headers={"Cache-Control": "no-cache"}).text
+
+
+def github_version():
+    try:
+        m = re.search(r'^version:\s*"?([^"\n]+)"?', _repo_datei("config.yaml") or "", re.M)
+        return m.group(1).strip() if m else None
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def _changelog_neu(installiert, neueste):
     """Aenderungen zwischen installierter und neuester Version aus dem GitHub-Repo (beste Muehe)."""
     try:
-        ordner = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        konfig = open(os.path.join(ordner, "config.yaml"), encoding="utf-8").read()
-        m = re.search(r"github\.com/([^/\s]+)/([^/\s]+)/tree/[^/\s]+/([^\s]+)", konfig)
-        if not m:
-            return []
-        url = RAW_CHANGELOG.format(owner=m.group(1), repo=m.group(2), ordner=m.group(3).strip("/"))
-        text = httpx.get(url, timeout=10).text
+        text = _repo_datei("CHANGELOG.md") or ""
     except Exception:  # noqa: BLE001
         return []
     eintraege, aktuell = [], None
@@ -102,12 +114,25 @@ def pruefen(neu_laden=False):
                 stand.update(meldung="Update-Entität des Add-ons nicht gefunden (Supervisor-Integration aktiv?)",
                              geprueft=time.time())
                 return stand
+            s = _core("GET", f"states/{eid}")
             if neu_laden:
+                # Core frischt die Add-on-Daten verzoegert auf (Debouncer, ca. 10 s) und laedt dabei die
+                # Repositories neu. Deshalb danach eine Weile nachsehen, bis die neue Version ankommt.
+                vorher = s.get("attributes", {}).get("latest_version")
+                ziel = github_version()
                 try:
                     _core("POST", "services/homeassistant/update_entity", {"entity_id": eid}, timeout=60)
                 except httpx.TimeoutException:
                     pass
-            s = _core("GET", f"states/{eid}")
+                ende = time.time() + 45
+                while time.time() < ende:
+                    s = _core("GET", f"states/{eid}")
+                    neueste = s.get("attributes", {}).get("latest_version")
+                    if neueste != vorher or (ziel and neueste == ziel):
+                        break
+                    if not ziel and time.time() > ende - 25:
+                        break  # GitHub nicht erreichbar: nach ~20 s aufhoeren
+                    time.sleep(3)
             a = s.get("attributes", {})
             installiert, neueste = a.get("installed_version"), a.get("latest_version")
             verfuegbar = s.get("state") == "on" and bool(neueste) and neueste != installiert

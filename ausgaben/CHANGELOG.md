@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.15.2
+
+- „Nach Updates suchen“ findet eine gerade veröffentlichte Version jetzt beim ersten Mal: Die App wartet, bis Home Assistant die Add-on-Liste neu eingelesen hat (dauert etwa 10–20 Sekunden), statt sofort „Kein Update vorhanden“ zu melden.
+
 ## 1.15.1
 
 - Ziehen zum Aktualisieren: Die Vibration kommt jetzt beim Loslassen, wenn der Abruf startet. iOS lässt Web-Apps nur direkt bei einer Berührung vibrieren, nicht während des Ziehens.
