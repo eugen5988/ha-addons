@@ -2158,8 +2158,9 @@ function haptik() {
     const l = document.createElement("label");
     const i = document.createElement("input");
     i.type = "checkbox"; i.setAttribute("switch", "");
-    l.appendChild(i); l.style.display = "none";
-    document.body.appendChild(l); l.click(); l.remove();
+    l.setAttribute("aria-hidden", "true"); l.style.display = "none";
+    l.appendChild(i);
+    document.head.appendChild(l); l.click(); l.remove();
   } catch (_) { /* kein Feedback möglich */ }
 }
 function ziehenAnzeige() {
@@ -2203,7 +2204,8 @@ function ziehenAktivieren() {
     zug = dy < ZIEH_SCHWELLE ? dy : ZIEH_SCHWELLE + (dy - ZIEH_SCHWELLE) * 0.35; // weicher Widerstand
     zug = Math.max(0, zug * 0.75);
     setzen(zug, false);
-    if (!gefuehlt && zug >= ZIEH_SCHWELLE) { gefuehlt = true; haptik(); }
+    // Haptik geht in iOS-Safari nur innerhalb einer Nutzeraktion (touchend), nicht während touchmove.
+    if (!gefuehlt && zug >= ZIEH_SCHWELLE) gefuehlt = true;
     if (gefuehlt && zug < ZIEH_SCHWELLE * 0.8) gefuehlt = false;
   }, { passive: false });
   const ende = () => {
@@ -2211,6 +2213,7 @@ function ziehenAktivieren() {
     aktiv = false;
     setTimeout(() => (ziehtGerade = false), 50);
     if (zug >= ZIEH_SCHWELLE) {
+      haptik();
       setzen(60, true);
       const el = ziehenAnzeige(); el.classList.add("laedt");
       allesAktualisieren().finally(() => { el.classList.remove("laedt"); setzen(0, true); });

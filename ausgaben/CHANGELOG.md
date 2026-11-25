@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.15.1
+
+- Ziehen zum Aktualisieren: Die Vibration kommt jetzt beim Loslassen, wenn der Abruf startet. iOS lässt Web-Apps nur direkt bei einer Berührung vibrieren, nicht während des Ziehens.
+
 ## 1.15.0
 
 - Updates direkt in der App: Unter Mehr → Info → „Version & Änderungen“ nach Updates suchen und mit „Jetzt aktualisieren“ installieren (optional mit Backup vorher). Die App wartet auf den Neustart und lädt sich danach selbst neu.
