@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.16.1
+
+- Fehler behoben: Die Seite „Einträge“ zeigte seit 1.16.0 ohne aktiven Filter nur eine Fehlermeldung („scrollIntoView is not a function“).
+
 ## 1.16.0
 
 - Neu: Einträge als **„Noch offen“** markieren (Häkchen beim Erfassen und Bearbeiten), z. B. wenn sich der Betrag noch ändern kann oder der Eintrag evtl. wieder entfällt. In den Listen steht dann die Marke „offen“.

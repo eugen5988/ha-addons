@@ -646,7 +646,7 @@ async function eintraegeAnsicht() {
   $$(".chip[data-k]").forEach((b) => (b.onclick = () => { s.kategorie = String(s.kategorie) === b.dataset.k ? "" : b.dataset.k; eintraegeAnsicht(); }));
   $("#export").onclick = () => exportSheet({ ...s });
   $("#mehr-laden").onclick = () => listeLaden();
-  ($(".chip.aktiv[data-k]") || (s.offen && $("#f-offen")))?.scrollIntoView({ inline: "center", block: "nearest" });
+  ($(".chip.aktiv[data-k]") || (s.offen ? $("#f-offen") : null))?.scrollIntoView({ inline: "center", block: "nearest" });
   await listeNeu();
 }
 const SORTIERUNGEN = [["", "Neueste zuerst"], ["alt", "Älteste zuerst"], ["betrag", "Höchster Betrag zuerst"]];
