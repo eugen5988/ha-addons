@@ -2015,6 +2015,7 @@ function nachholenBearbeiten(z, fertig) {
 // ---------------------------------------------------------------- Sheet, Tabs, Start
 function sheetOeffnen(html) {
   const s = $("#sheet");
+  s.style.transform = s.style.transition = ""; $("#sheet-hintergrund").style.opacity = "";
   s.innerHTML = html; s.hidden = false; $("#sheet-hintergrund").hidden = false;
   document.body.style.overflow = "hidden";
   $$("[data-zu]", s).forEach((b) => (b.onclick = sheetSchliessen));
@@ -2024,6 +2025,45 @@ function sheetSchliessen() {
   document.body.style.overflow = "";
 }
 $("#sheet-hintergrund").onclick = sheetSchliessen;
+
+// Wie in iOS: Sheet nach unten wegziehen, wenn es ganz oben steht.
+(function sheetWegziehen() {
+  const s = $("#sheet"), hg = $("#sheet-hintergrund");
+  let y0 = 0, x0 = 0, t0 = 0, dy = 0, aktiv = false, richtung = null;
+  s.addEventListener("touchstart", (ev) => {
+    aktiv = s.scrollTop <= 0 && ev.touches.length === 1;
+    y0 = ev.touches[0].clientY; x0 = ev.touches[0].clientX; t0 = Date.now(); dy = 0; richtung = null;
+  }, { passive: true });
+  s.addEventListener("touchmove", (ev) => {
+    if (!aktiv) return;
+    const my = ev.touches[0].clientY - y0, mx = ev.touches[0].clientX - x0;
+    if (!richtung) {
+      if (Math.abs(my) < 6 && Math.abs(mx) < 6) return;
+      richtung = my > 0 && Math.abs(my) > Math.abs(mx) && s.scrollTop <= 0 ? "runter" : "anders";
+      if (richtung !== "runter") { aktiv = false; return; }
+      document.activeElement?.blur?.(); // Tastatur einklappen
+    }
+    ev.preventDefault();
+    dy = Math.max(0, my);
+    s.style.transition = hg.style.transition = "none";
+    s.style.transform = `translateY(${dy}px)`;
+    hg.style.opacity = String(Math.max(0.15, 1 - dy / (s.offsetHeight || 600)));
+  }, { passive: false });
+  const ende = () => {
+    if (!aktiv || richtung !== "runter") { aktiv = false; return; }
+    aktiv = false;
+    const tempo = dy / Math.max(1, Date.now() - t0); // Punkte je ms
+    s.style.transition = "transform .24s cubic-bezier(.2,.8,.2,1)"; hg.style.transition = "opacity .24s";
+    if (dy > Math.min(140, s.offsetHeight * 0.3) || (tempo > 0.6 && dy > 40)) {
+      s.style.transform = "translateY(100%)"; hg.style.opacity = "0";
+      setTimeout(sheetSchliessen, 230);
+    } else {
+      s.style.transform = ""; hg.style.opacity = "";
+    }
+  };
+  s.addEventListener("touchend", ende);
+  s.addEventListener("touchcancel", ende);
+})();
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#sheet").hidden) sheetSchliessen(); });
 
 // ---------------------------------------------------------------- Ziehen zum Aktualisieren

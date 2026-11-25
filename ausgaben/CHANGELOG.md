@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.13.0
+
+- Fenster (z. B. „Neue Ausgabe“) lassen sich wie unter iOS nach unten wegziehen: Ein langer Zug oder ein schneller Wisch schließt das Fenster, ein kurzer Zug federt zurück. Das gilt nur, wenn das Fenster ganz oben steht; sonst wird normal gescrollt.
+
 ## 1.12.2
 
 - Kein Zoomen mehr auf dem iPhone: Zwei-Finger-Zoom und Doppeltippen vergrößern die App nicht mehr, auch nicht beim Antippen von Eingabefeldern.
