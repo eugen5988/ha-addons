@@ -186,6 +186,7 @@ setInterval(() => { if (wsLesen().length && document.visibilityState === "visibl
 
 async function metaLaden() {
   S.meta = await api("meta");
+  $(".tabs [data-tab=mehr]")?.classList.toggle("punkt", !!S.meta.update?.verfuegbar);
   const d = S.meta.darstellung;
   if (d && (d.design !== S.design.id || d.modus !== S.design.modus)) designAnwenden(d.design, d.modus);
   return S.meta;
@@ -1116,6 +1117,7 @@ async function mehrAnsicht() {
     ? `<span class="marke pruefen">${trProblem && tr.zustand === "login_noetig" && !m.banken.fehler.length ? "Anmeldung nötig" : "Fehler"}</span>`
     : bankAnzahl ? `${bankAnzahl} verbunden` : "einrichten";
   ansicht.innerHTML = `<div class="kopf"><h1>Mehr</h1></div>
+    ${m.update?.verfuegbar ? `<button class="hinweis ok" id="m-update"><span style="font-size:20px">⬆️</span><span><b style="color:inherit">Update auf ${esc(m.update.neueste)} verfügbar</b><br><span class="leise" style="font-size:13px">Antippen zum Ansehen und Installieren</span></span><span style="margin-left:auto">›</span></button>` : ""}
     <div class="abschnitt">Daten</div>
     <div class="mehr-liste">
       <button id="m-kat"><span class="ic">🏷️</span>Kategorien<span class="rechts">${m.kategorien.filter((k) => !k.archiviert).length}</span></button>
@@ -1145,7 +1147,7 @@ async function mehrAnsicht() {
     </div>
     <div class="abschnitt">Info</div>
     <div class="mehr-liste">
-      <button id="m-version"><span class="ic">ℹ️</span>Version &amp; Änderungen<span class="rechts">${esc(m.version || "")}</span></button>
+      <button id="m-version"><span class="ic">ℹ️</span>Version &amp; Änderungen<span class="rechts">${m.update?.verfuegbar ? `<span class="marke pruefen">Update ${esc(m.update.neueste)}</span>` : esc(m.version || "")}</span></button>
     </div>
     <div class="abschnitt">Verwaltung</div>
     <div class="mehr-liste">
@@ -1154,6 +1156,7 @@ async function mehrAnsicht() {
     <p class="leise" style="font-size:13px;margin:18px 4px">${m.anzahl_gesamt.toLocaleString("de-DE")} Einträge gespeichert. Die Daten liegen im Add-on und sind Teil deiner Home-Assistant-Backups.</p>`;
   $("#m-kat").onclick = kategorienVerwalten;
   $("#m-version").onclick = versionAnsicht;
+  $("#m-update")?.addEventListener("click", versionAnsicht);
   $("#m-konten").onclick = kontenVerwalten;
   $("#m-regeln").onclick = regelnAnsicht;
   $("#m-anteile").onclick = anteileAnsicht;
@@ -1174,17 +1177,73 @@ async function mehrAnsicht() {
 const mdKurz = (t) => esc(t).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/`(.+?)`/g, "<code>$1</code>");
 async function versionAnsicht() {
   const v = await api("version");
+  const u = v.update || {};
   const liste = v.aenderungen.map((a, i) => `
     <details class="version" ${i < 3 ? "open" : ""}>
       <summary><b>${esc(a.version)}</b>${a.version === v.version ? '<span class="marke auto">installiert</span>' : ""}<span class="leise">${a.punkte.length} ${a.punkte.length === 1 ? "Änderung" : "Änderungen"}</span></summary>
       <ul>${a.punkte.map((p) => `<li>${mdKurz(p)}</li>`).join("")}</ul>
     </details>`).join("");
+  const geprueft = u.geprueft ? new Date(u.geprueft * 1000) : null;
+  const geprueftText = geprueft ? `Zuletzt geprüft ${geprueft.toDateString() === new Date().toDateString() ? "heute" : geprueft.toLocaleDateString("de-DE")} um ${geprueft.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}` : "Noch nicht geprüft";
+  const updateBox = u.laeuft ? `<div class="update-box"><b>Update läuft …</b><p class="leise">Das Add-on wird gerade aktualisiert und startet danach neu.</p></div>`
+    : u.verfuegbar ? `<div class="update-box neu">
+        <div class="leise">Update verfügbar</div><div class="version-nr">${esc(u.neueste)}</div>
+        ${(u.neu || []).length ? `<ul>${u.neu.flatMap((a) => a.punkte.map((p) => `<li>${mdKurz(p)}</li>`)).join("")}</ul>` : ""}
+        ${checkZeile("up-backup", false, "Vorher ein Backup des Add-ons anlegen (dauert länger)")}
+        <div class="knopfreihe"><button class="knopf" id="up-los">Jetzt aktualisieren</button></div></div>`
+    : `<div class="update-box"><div style="display:flex;align-items:center;gap:10px"><span style="font-size:22px">${u.meldung ? "⚠️" : geprueft ? "✅" : "🔎"}</span><div><b>${u.meldung ? "Prüfung nicht möglich" : geprueft ? "Du bist auf dem neuesten Stand" : "Noch nicht nach Updates gesucht"}</b><div class="leise" style="font-size:13px">${esc(u.meldung || geprueftText)}</div></div></div>
+        <div class="knopfreihe"><button class="knopf zweit" id="up-pruefen">Nach Updates suchen</button></div></div>`;
   unterseite("Version & Änderungen", `
-    <div class="version-kopf"><div class="leise">Installierte Version</div><div class="version-nr">${esc(v.version)}</div>
-      <p class="leise" style="font-size:13px;margin:6px 0 0">Updates kommen über Home Assistant: Add-on-Store → ⋮ → „Nach Updates suchen“ → Ausgaben → „Aktualisieren“.</p></div>
+    <div class="version-kopf"><div class="leise">Installierte Version</div><div class="version-nr">${esc(v.version)}</div></div>
+    ${updateBox}
     <div class="abschnitt">Änderungen</div>
     ${liste || '<div class="leer">Kein Änderungsprotokoll gefunden.</div>'}`);
   window.scrollTo(0, 0);
+  $("#up-pruefen")?.addEventListener("click", async (ev) => {
+    ev.target.disabled = true; ev.target.textContent = "Suche …";
+    try {
+      const r = await api("update/pruefen", { method: "POST", zeitlimit: 90000 });
+      await metaLaden().catch(() => {});
+      if (!r.verfuegbar && !r.meldung) toast("Kein Update vorhanden");
+      versionAnsicht();
+    } catch (err) { toast(err.message); ev.target.disabled = false; ev.target.textContent = "Nach Updates suchen"; }
+  });
+  $("#up-los")?.addEventListener("click", async () => {
+    if (!confirm(`Auf Version ${u.neueste} aktualisieren? Die App ist dabei ein bis zwei Minuten nicht erreichbar.`)) return;
+    try {
+      await api("update/installieren", { method: "POST", body: { backup: $("#up-backup").checked } });
+      updateWarten(v.version, u.neueste);
+    } catch (err) { toast(err.message); }
+  });
+}
+// Während des Updates: warten, bis das Add-on mit neuer Version antwortet, dann die App neu laden.
+function updateWarten(alt, neu) {
+  sheetOeffnen(`<div class="griff"></div><div style="text-align:center;padding:26px 8px 18px">
+    <div class="kreisel" style="margin:0 auto 14px"></div>
+    <p style="font-size:17px;font-weight:600;margin:0 0 6px">Aktualisiere auf ${esc(neu)} …</p>
+    <p class="leise" id="up-text" style="margin:0">Home Assistant baut das Add-on neu. Die App lädt danach von selbst neu.</p></div>`);
+  const start = Date.now();
+  const text = (t) => { const el = $("#up-text"); if (el) el.textContent = t; else toast(t); };
+  const runde = async () => {
+    try {
+      const r = await fetch("api/version", { cache: "no-store", headers: { "X-Ausgaben-Token": localStorage.getItem("ausgaben_token") || "" } });
+      if (r.ok && !r.headers.get("X-Ausgaben-Offline")) {
+        const d = await r.json();
+        if (d.version && d.version !== alt) {
+          text(`Version ${d.version} ist installiert. Lade neu …`);
+          try { await (await navigator.serviceWorker?.getRegistration())?.update(); } catch (_) { /* egal */ }
+          setTimeout(() => location.reload(), 800);
+          return;
+        }
+        if (d.update && !d.update.laeuft && d.update.meldung && Date.now() - start > 15000) {
+          text(d.update.meldung); return;
+        }
+      }
+    } catch (_) { /* Add-on startet gerade neu */ }
+    if (Date.now() - start > 15 * 60000) { text("Das dauert ungewöhnlich lange. Sieh bitte in Home Assistant unter Einstellungen → Add-ons nach."); return; }
+    setTimeout(runde, 3000);
+  };
+  setTimeout(runde, 5000);
 }
 
 function unterseite(titel, html) {

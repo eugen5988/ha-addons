@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.15.0
+
+- Updates direkt in der App: Unter Mehr → Info → „Version & Änderungen“ nach Updates suchen und mit „Jetzt aktualisieren“ installieren (optional mit Backup vorher). Die App wartet auf den Neustart und lädt sich danach selbst neu.
+- Neue Versionen werden alle 6 Stunden geprüft und angezeigt: Punkt am Reiter „Mehr“, Hinweis oben auf der Seite „Mehr“ und Marke neben „Version & Änderungen“, jeweils mit den Neuerungen der neuen Version.
+- Läuft über Home Assistant (Update-Entität des Add-ons), es sind keine zusätzlichen Berechtigungen nötig.
+
 ## 1.14.0
 
 - Neu unter Mehr → Info: **Version & Änderungen** zeigt die installierte Version und das komplette Änderungsprotokoll.

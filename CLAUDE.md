@@ -29,6 +29,7 @@ Der Nutzer spricht Deutsch; Oberfläche, Texte, Commit-Nachrichten und Changelog
 - `tr_sync.py` – Trade Republic über pytr; Zugangsdaten in der DB, Sitzung im pytr-Verzeichnis
 - `fints_sync.py` – DKB, comdirect, andere über python-fints (Jobs mit TAN/App-Freigabe, Nachholen)
 - Mehr → Info → „Version & Änderungen“ liest `config.yaml` und `CHANGELOG.md` (im Image per Dockerfile kopiert); Changelog-Punkte als `- ` unter `## Version`.
+- `aktualisierung.py` – Updates aus der App über Core (`homeassistant.update_entity` = Store-Reload, `update.install`); der Supervisor verbietet Selbst-Updates direkt
 - `next_import.py`, `export.py`, `auswertung.py`, `waehrung.py`, `einstellungen.py`
 - `static/` – Web-App ohne Build-Schritt (`index.html`, `app.js`, `app.css`, Symbole)
 
@@ -41,6 +42,7 @@ python tests/test_beleg.py
 python tests/test_ki.py
 python tests/test_anteile.py
 python tests/test_offline.py
+python tests/test_update.py
 ```
 
 Die Tests laufen ohne Netz: pytr und die Claude-API werden nachgebaut (`tests/fake_pytr.py`).

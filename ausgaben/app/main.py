@@ -13,7 +13,7 @@ from fastapi import Body, FastAPI, File, Form, HTTPException, Request, UploadFil
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
-from . import anteile, auswertung, beleg, db, tls, export, fints_sync, kategorisierung, ki_nutzung, next_import, tr_sync, waehrung
+from . import aktualisierung, anteile, auswertung, beleg, db, tls, export, fints_sync, kategorisierung, ki_nutzung, next_import, tr_sync, waehrung
 from .einstellungen import optionen
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -84,6 +84,17 @@ async def _bank_schleife():
         await asyncio.sleep(60)
 
 
+async def _update_schleife():
+    """Alle 6 Stunden bei Home Assistant nachsehen, ob es eine neue Add-on-Version gibt."""
+    await asyncio.sleep(90)
+    while True:
+        try:
+            await asyncio.to_thread(aktualisierung.pruefen, False)
+        except Exception:  # noqa: BLE001
+            log.exception("Update-Schleife")
+        await asyncio.sleep(6 * 3600)
+
+
 @asynccontextmanager
 async def lebenszyklus(_app):
     global _loop
@@ -96,7 +107,7 @@ async def lebenszyklus(_app):
     tr_sync.migrieren()
     anteile.neue_anwenden()
     aufgaben = [asyncio.create_task(_tr_schleife()), asyncio.create_task(_sensor_schleife()),
-                asyncio.create_task(_bank_schleife())]
+                asyncio.create_task(_bank_schleife()), asyncio.create_task(_update_schleife())]
     yield
     for a in aufgaben:
         a.cancel()
@@ -149,6 +160,7 @@ def meta():
         "einstellungen": {"mehrdeutig": kategorisierung.mehrdeutige_muster(), "wohnort": db.einstellung("ki_wohnort") or ""},
         "anzahl_gesamt": db.q1("SELECT COUNT(*) n FROM eintraege")["n"],
         "version": addon_version(),
+        "update": {"verfuegbar": aktualisierung.stand["verfuegbar"], "neueste": aktualisierung.stand["neueste"]},
         "darstellung": {"design": db.einstellung("design", "salbei"), "modus": db.einstellung("design_modus", "auto"),
                         "startseite": db.einstellung("startseite", "uebersicht")},
         "banken": {"anzahl": db.q1("SELECT COUNT(*) n FROM banken")["n"],
@@ -845,7 +857,22 @@ def changelog():
 
 @app.get("/api/version")
 def version_info():
-    return {"version": addon_version(), "aenderungen": changelog()}
+    return {"version": addon_version(), "aenderungen": changelog(), "update": aktualisierung.oeffentlich()}
+
+
+@app.post("/api/update/pruefen")
+async def update_pruefen():
+    await asyncio.to_thread(aktualisierung.pruefen, True)
+    return aktualisierung.oeffentlich()
+
+
+@app.post("/api/update/installieren")
+def update_installieren(d: dict = Body(default={})):
+    try:
+        aktualisierung.installieren(bool(d.get("backup")))
+    except RuntimeError as e:
+        raise HTTPException(409, str(e)) from e
+    return aktualisierung.oeffentlich()
 
 
 def _app_version():

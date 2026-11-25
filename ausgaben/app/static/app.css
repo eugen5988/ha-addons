@@ -384,3 +384,10 @@ details.version summary::-webkit-details-marker { display: none; }
 details.version summary .leise { margin-left: auto; font-size: 13px; }
 details.version ul { margin: 0 0 12px; padding-left: 18px; font-size: 14.5px; }
 details.version li { margin: 4px 0; overflow-wrap: anywhere; }
+.update-box { background: var(--flaeche); border-radius: var(--radius); padding: 14px 16px; margin: 8px 0; }
+.update-box.neu { border: 1.5px solid var(--akzent); }
+.update-box ul { margin: 8px 0 4px; padding-left: 18px; font-size: 14.5px; }
+.update-box .knopfreihe { margin-top: 10px; }
+.tabs button { position: relative; }
+.tabs button.punkt::after { content: ""; position: absolute; top: 4px; left: calc(50% + 9px); width: 9px; height: 9px;
+  border-radius: 50%; background: var(--pruefen); box-shadow: 0 0 0 2px var(--flaeche); }
