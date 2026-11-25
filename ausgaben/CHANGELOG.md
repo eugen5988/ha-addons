@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.15.5
+
+- Vibration beim Herunterziehen entfernt (auch der Punkt „Vibration“ unter Mehr → Darstellung): Neuere iOS-Versionen lassen Web-Apps nicht mehr vibrieren. Das Ziehen zum Aktualisieren funktioniert unverändert.
+
 ## 1.15.4
 
 - Update-Hinweis zeigt nur noch die Neuerungen seit der installierten Version (vorher teils das halbe Änderungsprotokoll). Bei mehreren Versionen steht darüber „Neu in …“.
