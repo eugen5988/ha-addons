@@ -2162,6 +2162,10 @@ async function bankenBeobachten(ids, bis = Date.now() + 6 * 60000) {
 }
 ziehenAktivieren();
 
+// Kein Zoomen wie in einer echten App: iOS-Safari ignoriert user-scalable=no, daher die Gesten selbst abfangen.
+["gesturestart", "gesturechange", "gestureend"].forEach((t) => document.addEventListener(t, (ev) => ev.preventDefault(), { passive: false }));
+document.addEventListener("touchmove", (ev) => { if (ev.touches.length > 1) ev.preventDefault(); }, { passive: false });
+
 const ANSICHTEN = { uebersicht, eintraege: eintraegeAnsicht, verlauf: verlaufAnsicht, mehr: mehrAnsicht, pruefen: pruefenAnsicht };
 function tabWechseln(tab) {
   S.tab = tab;

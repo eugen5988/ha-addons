@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.12.2
+
+- Kein Zoomen mehr auf dem iPhone: Zwei-Finger-Zoom und Doppeltippen vergrößern die App nicht mehr, auch nicht beim Antippen von Eingabefeldern.
+
 ## 1.12.1
 
 - Ziehen zum Aktualisieren: Ist die Trade-Republic-Sitzung abgelaufen, startet die Anmeldung gleich mit (gespeicherte PIN, Bestätigung in der Trade-Republic-App). Danach werden die Umsätze abgerufen und die Anzahl neuer Einträge gemeldet.
