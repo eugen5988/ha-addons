@@ -11,5 +11,6 @@ COPY requirements.txt .
 RUN pip install -r requirements.txt
 
 COPY app/ ./app/
+COPY config.yaml CHANGELOG.md ./
 
 CMD ["python", "-m", "app.main"]

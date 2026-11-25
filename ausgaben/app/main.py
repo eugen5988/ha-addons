@@ -148,6 +148,7 @@ def meta():
         "tr": tr_sync.konfig(),
         "einstellungen": {"mehrdeutig": kategorisierung.mehrdeutige_muster(), "wohnort": db.einstellung("ki_wohnort") or ""},
         "anzahl_gesamt": db.q1("SELECT COUNT(*) n FROM eintraege")["n"],
+        "version": addon_version(),
         "darstellung": {"design": db.einstellung("design", "salbei"), "modus": db.einstellung("design_modus", "auto"),
                         "startseite": db.einstellung("startseite", "uebersicht")},
         "banken": {"anzahl": db.q1("SELECT COUNT(*) n FROM banken")["n"],
@@ -810,6 +811,41 @@ def kurs(waehrung_code: str, datum: str = ""):
 @app.get("/")
 def index():
     return FileResponse(os.path.join(STATIC, "index.html"), headers={"Cache-Control": "no-cache"})
+
+
+ADDON_ORDNER = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def addon_version():
+    """Version aus config.yaml (im Container neben dem app-Ordner)."""
+    import re as _re
+    try:
+        m = _re.search(r'^version:\s*"?([^"\n]+)"?', open(os.path.join(ADDON_ORDNER, "config.yaml"), encoding="utf-8").read(), _re.M)
+        return m.group(1).strip() if m else "?"
+    except OSError:
+        return "?"
+
+
+def changelog():
+    """CHANGELOG.md als Liste [{version, punkte}] (neueste zuerst)."""
+    try:
+        text = open(os.path.join(ADDON_ORDNER, "CHANGELOG.md"), encoding="utf-8").read()
+    except OSError:
+        return []
+    eintraege = []
+    for zeile in text.splitlines():
+        if zeile.startswith("## "):
+            eintraege.append({"version": zeile[3:].strip(), "punkte": []})
+        elif eintraege and zeile.startswith("- "):
+            eintraege[-1]["punkte"].append(zeile[2:].strip())
+        elif eintraege and zeile.startswith("  ") and eintraege[-1]["punkte"]:
+            eintraege[-1]["punkte"][-1] += " " + zeile.strip()
+    return eintraege
+
+
+@app.get("/api/version")
+def version_info():
+    return {"version": addon_version(), "aenderungen": changelog()}
 
 
 def _app_version():

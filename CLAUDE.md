@@ -28,6 +28,7 @@ Der Nutzer spricht Deutsch; Oberfläche, Texte, Commit-Nachrichten und Changelog
 - `ki_nutzung.py` – Tokenzählung und Kostenrechnung (Listenpreise in `STANDARD_PREISE`)
 - `tr_sync.py` – Trade Republic über pytr; Zugangsdaten in der DB, Sitzung im pytr-Verzeichnis
 - `fints_sync.py` – DKB, comdirect, andere über python-fints (Jobs mit TAN/App-Freigabe, Nachholen)
+- Mehr → Info → „Version & Änderungen“ liest `config.yaml` und `CHANGELOG.md` (im Image per Dockerfile kopiert); Changelog-Punkte als `- ` unter `## Version`.
 - `next_import.py`, `export.py`, `auswertung.py`, `waehrung.py`, `einstellungen.py`
 - `static/` – Web-App ohne Build-Schritt (`index.html`, `app.js`, `app.css`, Symbole)
 

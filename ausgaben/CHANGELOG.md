@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.14.0
+
+- Neu unter Mehr → Info: **Version & Änderungen** zeigt die installierte Version und das komplette Änderungsprotokoll.
+- Seiten lassen sich nicht mehr seitlich verschieben, z. B. die Bankseite bei langen Fehlermeldungen. Lange Meldungen werden umbrochen.
+
 ## 1.13.0
 
 - Fenster (z. B. „Neue Ausgabe“) lassen sich wie unter iOS nach unten wegziehen: Ein langer Zug oder ein schneller Wisch schließt das Fenster, ein kurzer Zug federt zurück. Das gilt nur, wenn das Fenster ganz oben steht; sonst wird normal gescrollt.

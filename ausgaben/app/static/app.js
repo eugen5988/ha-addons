@@ -1143,12 +1143,17 @@ async function mehrAnsicht() {
       <button id="m-offline"><span class="ic">📶</span>Offline &amp; HTTPS<span class="rechts">${location.protocol === "https:" && navigator.serviceWorker?.controller ? "aktiv" : "einrichten"}</span></button>
       <button id="m-start"><span class="ic">🏠</span>Startseite<span class="rechts">${esc(STARTSEITEN[S.meta.darstellung.startseite] || "Übersicht")}</span></button>
     </div>
+    <div class="abschnitt">Info</div>
+    <div class="mehr-liste">
+      <button id="m-version"><span class="ic">ℹ️</span>Version &amp; Änderungen<span class="rechts">${esc(m.version || "")}</span></button>
+    </div>
     <div class="abschnitt">Verwaltung</div>
     <div class="mehr-liste">
       <button id="m-reset" style="color:var(--pruefen)"><span class="ic">🗑️</span>Alle Einträge löschen</button>
     </div>
     <p class="leise" style="font-size:13px;margin:18px 4px">${m.anzahl_gesamt.toLocaleString("de-DE")} Einträge gespeichert. Die Daten liegen im Add-on und sind Teil deiner Home-Assistant-Backups.</p>`;
   $("#m-kat").onclick = kategorienVerwalten;
+  $("#m-version").onclick = versionAnsicht;
   $("#m-konten").onclick = kontenVerwalten;
   $("#m-regeln").onclick = regelnAnsicht;
   $("#m-anteile").onclick = anteileAnsicht;
@@ -1165,6 +1170,23 @@ async function mehrAnsicht() {
   $("#m-export").onclick = () => exportSheet({});
   $("#m-import").onclick = importSheet;
 }
+// ---------------------------------------------------------------- Version und Änderungen
+const mdKurz = (t) => esc(t).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/`(.+?)`/g, "<code>$1</code>");
+async function versionAnsicht() {
+  const v = await api("version");
+  const liste = v.aenderungen.map((a, i) => `
+    <details class="version" ${i < 3 ? "open" : ""}>
+      <summary><b>${esc(a.version)}</b>${a.version === v.version ? '<span class="marke auto">installiert</span>' : ""}<span class="leise">${a.punkte.length} ${a.punkte.length === 1 ? "Änderung" : "Änderungen"}</span></summary>
+      <ul>${a.punkte.map((p) => `<li>${mdKurz(p)}</li>`).join("")}</ul>
+    </details>`).join("");
+  unterseite("Version & Änderungen", `
+    <div class="version-kopf"><div class="leise">Installierte Version</div><div class="version-nr">${esc(v.version)}</div>
+      <p class="leise" style="font-size:13px;margin:6px 0 0">Updates kommen über Home Assistant: Add-on-Store → ⋮ → „Nach Updates suchen“ → Ausgaben → „Aktualisieren“.</p></div>
+    <div class="abschnitt">Änderungen</div>
+    ${liste || '<div class="leer">Kein Änderungsprotokoll gefunden.</div>'}`);
+  window.scrollTo(0, 0);
+}
+
 function unterseite(titel, html) {
   ansicht.innerHTML = `<div class="kopf"><button class="rund" id="zurueck" aria-label="Zurück">‹</button><h1>${esc(titel)}</h1></div>${html}`;
   $("#zurueck").onclick = mehrAnsicht;
