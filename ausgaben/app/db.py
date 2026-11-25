@@ -125,6 +125,8 @@ def _spalten_ergaenzen(c):
     vorhanden = {r[1] for r in c.execute("PRAGMA table_info(eintraege)")}
     if "anteil" not in vorhanden:
         c.execute("ALTER TABLE eintraege ADD COLUMN anteil REAL")
+    if "offen" not in vorhanden:  # "Noch offen": Betrag kann sich noch ändern / Eintrag evtl. wieder weg
+        c.execute("ALTER TABLE eintraege ADD COLUMN offen INTEGER DEFAULT 0")
 
 
 def _initialbefuellung(c):

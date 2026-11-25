@@ -131,6 +131,9 @@ button { cursor: pointer; }
 .marke.pruefen { background: var(--pruefen-zart); color: var(--pruefen); }
 .marke.wartet { background: #F6E3D9; color: #B4552D; }
 .eintrag.wartend .wert { color: var(--leise); }
+.marke.offen { background: #E8E2F6; color: #5B3FB0; }
+.hinweis.offen { background: var(--flaeche-2); }
+.hinweis.offen b { color: #5B3FB0; }
 .marke.auto { background: var(--akzent-zart); color: var(--akzent); }
 
 .hinweis { display: flex; align-items: center; gap: 12px; background: var(--pruefen-zart); color: var(--tinte);

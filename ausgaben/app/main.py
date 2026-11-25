@@ -260,6 +260,19 @@ def anteil_loeschen(rid: int, rueckwirkend: bool = False):
     return {"ok": True}
 
 
+def _offen_setzen(eid, d):
+    """Markierung „Noch offen“ setzen oder entfernen, wenn mitgeschickt."""
+    if "offen" in d:
+        db.x("UPDATE eintraege SET offen=? WHERE id=?", (1 if d.get("offen") else 0, eid))
+
+
+@app.post("/api/eintraege/{eid}/offen")
+def eintrag_offen(eid: int, d: dict = Body(default={})):
+    _eintrag_laden(eid)
+    db.x("UPDATE eintraege SET offen=?, geaendert=? WHERE id=?", (1 if d.get("offen", True) else 0, db.jetzt_iso(), eid))
+    return _eintrag_laden(eid)
+
+
 @app.post("/api/eintraege")
 def eintrag_anlegen(d: dict = Body(...)):
     ref = str(d.get("client_ref") or "")[:64]
@@ -281,6 +294,7 @@ def eintrag_anlegen(d: dict = Body(...)):
          d.get("bezeichnung", ""), d.get("notiz", ""), d.get("konto_id") or db.konto_id("Bargeld"),
          ("app:" + ref) if ref else None, 1 if roh.get("pruefen") else 0, jetzt, jetzt))
     _anteil_uebernehmen(eid, anteil, roh)
+    _offen_setzen(eid, roh)
     sensoren_aktualisieren()
     return _eintrag_laden(eid)
 
@@ -311,6 +325,7 @@ def eintrag_aendern(eid: int, d: dict = Body(...)):
     if (kategorie_geaendert or bez_geaendert) and d.get("regel_lernen", True):
         kategorisierung.lerne_aus_korrektur(zusammen)
     _anteil_uebernehmen(eid, anteil, d)
+    _offen_setzen(eid, d)
     sensoren_aktualisieren()
     return _eintrag_laden(eid)
 

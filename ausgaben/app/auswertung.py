@@ -26,6 +26,8 @@ def filter_sql(p):
         w.append("e.konto_id = ?"); a.append(int(p["konto"]))
     if p.get("pruefen") in ("1", 1, True, "true"):
         w.append("e.pruefen = 1")
+    if p.get("offen") in ("1", 1, True, "true"):
+        w.append("e.offen = 1")
     if p.get("ohne_kategorie") in ("1", 1, True, "true"):
         w.append("e.kategorie_id IS NULL")
     if p.get("q"):
@@ -105,6 +107,7 @@ def kennzahlen():
         "vormonat_bis_heute": summe(i(vormonat_start), i(vormonat_start.replace(day=vormonat_bis_tag)))[0],
         "jahr": summe(i(jahresstart), i(heute))[0],
         "pruefen": db.q1("SELECT COUNT(*) n FROM eintraege WHERE pruefen=1")["n"],
+        "offen": db.q1("SELECT COUNT(*) n FROM eintraege WHERE offen=1")["n"],
         "monatsstart": i(monatsstart),
         "heute_datum": i(heute),
     }

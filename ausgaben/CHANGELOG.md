@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.16.0
+
+- Neu: Einträge als **„Noch offen“** markieren (Häkchen beim Erfassen und Bearbeiten), z. B. wenn sich der Betrag noch ändern kann oder der Eintrag evtl. wieder entfällt. In den Listen steht dann die Marke „offen“.
+- Alle offenen Einträge gesammelt: Hinweis in der Übersicht, Mehr → Daten → „Noch offen“ und Filter „Noch offen“ unter Einträge. Zum Erledigen den Eintrag öffnen und das Häkchen entfernen.
+- Offene Einträge zählen in allen Summen normal mit.
+
 ## 1.15.5
 
 - Vibration beim Herunterziehen entfernt (auch der Punkt „Vibration“ unter Mehr → Darstellung): Neuere iOS-Versionen lassen Web-Apps nicht mehr vibrieren. Das Ziehen zum Aktualisieren funktioniert unverändert.

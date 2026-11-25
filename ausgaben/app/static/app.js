@@ -6,7 +6,7 @@ const S = {
   tab: "uebersicht",
   zeitraum: { einheit: "monat", anker: new Date() },
   bandAuswahl: null,
-  suche: { q: "", kategorie: "", konto: "", pruefen: false, von: "", bis: "", sortierung: "" },
+  suche: { q: "", kategorie: "", konto: "", pruefen: false, offen: false, von: "", bis: "", sortierung: "" },
   liste: { eintraege: [], offset: 0, fertig: false, summe: 0, anzahl: 0 },
   verlauf: { einheit: "monat", kategorie: "" },
   letzteWaehrung: localStorage.getItem("ausgaben_waehrung") || "EUR",
@@ -129,7 +129,7 @@ function leisteZeigen() {
 function wartendeAktualisieren() {
   if (S.tab === "eintraege" && $("#liste")) {
     const s = S.suche;
-    if (!s.q && !s.kategorie && !s.konto && !s.pruefen && !s.von && !s.bis) wartendeEinbauen($("#liste"));
+    if (!s.q && !s.kategorie && !s.konto && !s.pruefen && !s.offen && !s.von && !s.bis) wartendeEinbauen($("#liste"));
   } else if (S.tab === "uebersicht" && $("#letzte")) wartendeEinbauen($("#letzte"));
 }
 function inWarteschlange(x) {
@@ -426,6 +426,7 @@ async function uebersicht() {
     </button>`).join("");
 
   $("#inhalt").innerHTML = `
+    ${S.meta.kennzahlen.offen ? `<button class="hinweis offen" id="zum-offen"><b>${S.meta.kennzahlen.offen}</b><span>${S.meta.kennzahlen.offen === 1 ? "Eintrag ist" : "Einträge sind"} noch offen</span><span style="margin-left:auto">›</span></button>` : ""}
     ${pruefen ? `<button class="hinweis" id="zum-pruefen"><b>${pruefen}</b><span>${pruefen === 1 ? "Eintrag wartet" : "Einträge warten"} auf deine Bestätigung</span><span style="margin-left:auto">›</span></button>` : ""}
     <div class="gesamt">
       <div class="betrag zahl">${esc(ganz)}<small>,${esc(cent)}</small></div>
@@ -440,9 +441,10 @@ async function uebersicht() {
     <div id="letzte"></div>`;
 
   $("#zum-pruefen")?.addEventListener("click", () => pruefenAnsicht());
+  $("#zum-offen")?.addEventListener("click", offeneAnzeigen);
   $$(".band button").forEach((b) => (b.onclick = () => { S.bandAuswahl = S.bandAuswahl === b.dataset.k ? null : b.dataset.k; uebersicht(); }));
   $$(".katzeile").forEach((b) => (b.onclick = () => {
-    Object.assign(S.suche, { q: "", kategorie: b.dataset.k, konto: "", pruefen: false, von: z.von, bis: z.bis });
+    Object.assign(S.suche, { q: "", kategorie: b.dataset.k, konto: "", pruefen: false, offen: false, von: z.von, bis: z.bis });
     tabWechseln("eintraege");
   }));
   if (z.sub) balkenKlicks($("#inhalt .block"), S._diagrammDaten, $("#dinfo"), (d) => {
@@ -454,7 +456,7 @@ async function uebersicht() {
   listeKlicks(letzte, liste.eintraege);
   wartendeEinbauen(letzte);
   $("#alle")?.addEventListener("click", () => {
-    Object.assign(S.suche, { q: "", kategorie: S.bandAuswahl || "", konto: "", pruefen: false, von: z.von, bis: z.bis });
+    Object.assign(S.suche, { q: "", kategorie: S.bandAuswahl || "", konto: "", pruefen: false, offen: false, von: z.von, bis: z.bis });
     tabWechseln("eintraege");
   });
 }
@@ -476,7 +478,7 @@ function eintragZeile(e, mitDatum = false) {
   const unter = [datumText, k ? k.name : "Ohne Kategorie", e.konto && e.konto !== "Altdaten (Next)" ? e.konto : "", e.datum.slice(11, 16) !== "00:00" ? e.datum.slice(11, 16) : ""].filter(Boolean).join(", ");
   return `<div class="wisch" data-id="${e.id}"><button class="wisch-loeschen" tabindex="-1"><span>Löschen</span></button><button class="eintrag" data-id="${e.id}">
     <span class="ic" style="${icFarbe(k?.farbe || "#9AA3AE")}">${esc(k?.icon || "❔")}</span>
-    <span style="min-width:0"><span class="titel">${esc(e.bezeichnung || e.haendler_roh || "Ohne Bezeichnung")}${e.pruefen ? '<span class="marke pruefen">prüfen</span>' : ""}</span>
+    <span style="min-width:0"><span class="titel">${esc(e.bezeichnung || e.haendler_roh || "Ohne Bezeichnung")}${e.pruefen ? '<span class="marke pruefen">prüfen</span>' : ""}${e.offen ? '<span class="marke offen">offen</span>' : ""}</span>
       <span class="unter">${esc(unter)}${e.notiz ? " – " + esc(e.notiz) : ""}</span></span>
     <span class="wert zahl ${gut ? "gut" : ""}">${gut ? "+" + geld(-(eigen(e) ?? 0)) : geld(eigen(e) ?? 0)}${geteilt(e) ? `<small>von ${geld(e.betrag_eur ?? e.betrag, e.betrag_eur != null ? "EUR" : e.waehrung)}</small>` : fremd ? `<small>${geld(e.betrag, e.waehrung)}</small>` : ""}${e.betrag_eur == null ? "<small>Kurs fehlt</small>" : ""}</span>
   </button></div>`;
@@ -624,6 +626,7 @@ async function eintraegeAnsicht() {
         <button class="chip ${s.sortierung ? "aktiv" : ""}" id="f-sort">↕ ${esc(SORTIERUNGEN.find((x) => x[0] === s.sortierung)[1])}</button>
         ${filterAktiv() ? '<button class="chip" id="f-reset">✕ Filter zurücksetzen</button>' : ""}
         <button class="chip ${s.pruefen ? "aktiv" : ""}" id="f-pruefen">Zu prüfen</button>
+        <button class="chip ${s.offen ? "aktiv" : ""}" id="f-offen">Noch offen</button>
         <button class="chip ${s.von || s.bis ? "aktiv" : ""}" id="f-zeit">${s.von || s.bis ? esc(zeitText(s.von, s.bis)) : "Zeitraum"}</button>
         <select class="chip ${s.konto ? "aktiv" : ""}" id="f-konto"><option value="">Alle Konten</option>${S.meta.konten.map((k) => `<option value="${k.id}" ${String(k.id) === String(s.konto) ? "selected" : ""}>${esc(k.name)}</option>`).join("")}</select>
         ${kategorieChips.map((k) => `<button class="chip ${String(k.id) === String(s.kategorie) ? "aktiv" : ""}" data-k="${k.id}">${esc(k.icon)} ${esc(k.name)}</button>`).join("")}
@@ -635,20 +638,21 @@ async function eintraegeAnsicht() {
   let timer;
   $("#q").oninput = (ev) => { clearTimeout(timer); timer = setTimeout(() => { s.q = ev.target.value; listeNeu(); }, 250); };
   $("#f-pruefen").onclick = () => { s.pruefen = !s.pruefen; eintraegeAnsicht(); };
+  $("#f-offen").onclick = () => { s.offen = !s.offen; eintraegeAnsicht(); };
   $("#f-konto").onchange = (ev) => { s.konto = ev.target.value; eintraegeAnsicht(); };
   $("#f-zeit").onclick = () => zeitraumWaehlen();
   $("#f-sort").onclick = () => sortierungWaehlen();
-  $("#f-reset")?.addEventListener("click", () => { Object.assign(s, { q: "", kategorie: "", konto: "", pruefen: false, von: "", bis: "" }); eintraegeAnsicht(); });
+  $("#f-reset")?.addEventListener("click", () => { Object.assign(s, { q: "", kategorie: "", konto: "", pruefen: false, offen: false, von: "", bis: "" }); eintraegeAnsicht(); });
   $$(".chip[data-k]").forEach((b) => (b.onclick = () => { s.kategorie = String(s.kategorie) === b.dataset.k ? "" : b.dataset.k; eintraegeAnsicht(); }));
   $("#export").onclick = () => exportSheet({ ...s });
   $("#mehr-laden").onclick = () => listeLaden();
-  $(".chip.aktiv[data-k]")?.scrollIntoView({ inline: "center", block: "nearest" });
+  ($(".chip.aktiv[data-k]") || (s.offen && $("#f-offen")))?.scrollIntoView({ inline: "center", block: "nearest" });
   await listeNeu();
 }
 const SORTIERUNGEN = [["", "Neueste zuerst"], ["alt", "Älteste zuerst"], ["betrag", "Höchster Betrag zuerst"]];
 function filterAktiv() {
   const s = S.suche;
-  return !!(s.q || s.kategorie || s.konto || s.pruefen || s.von || s.bis);
+  return !!(s.q || s.kategorie || s.konto || s.pruefen || s.offen || s.von || s.bis);
 }
 function sortierungWaehlen() {
   const s = S.suche;
@@ -663,7 +667,7 @@ function zeitText(von, bis) {
 async function listeNeu() { S.liste = { eintraege: [], offset: 0, fertig: false }; $("#liste").innerHTML = ""; await listeLaden(); }
 async function listeLaden() {
   const s = S.suche;
-  const r = await api("eintraege?" + qs({ q: s.q, kategorie: s.kategorie, konto: s.konto, pruefen: s.pruefen ? 1 : "", von: s.von, bis: s.bis, sortierung: s.sortierung, limit: 150, offset: S.liste.offset }));
+  const r = await api("eintraege?" + qs({ q: s.q, kategorie: s.kategorie, konto: s.konto, pruefen: s.pruefen ? 1 : "", offen: s.offen ? 1 : "", von: s.von, bis: s.bis, sortierung: s.sortierung, limit: 150, offset: S.liste.offset }));
   S.liste.eintraege.push(...r.eintraege);
   S.liste.offset += r.eintraege.length;
   S.liste.fertig = S.liste.offset >= r.anzahl;
@@ -671,7 +675,7 @@ async function listeLaden() {
   $("#summe").textContent = geld(r.summe);
   $("#liste").innerHTML = eintragsListe(S.liste.eintraege, s.sortierung !== "betrag");
   listeKlicks($("#liste"), S.liste.eintraege);
-  if (!s.q && !s.kategorie && !s.konto && !s.pruefen && !s.von && !s.bis) wartendeEinbauen($("#liste"));
+  if (!s.q && !s.kategorie && !s.konto && !s.pruefen && !s.offen && !s.von && !s.bis) wartendeEinbauen($("#liste"));
   $("#mehr-laden").hidden = S.liste.fertig;
 }
 function zeitraumWaehlen() {
@@ -705,6 +709,11 @@ function zeitraumWaehlen() {
 }
 
 // ---------------------------------------------------------------- Pruefen
+// Alle „Noch offen“-Einträge: Einträge-Liste mit diesem Filter
+function offeneAnzeigen() {
+  Object.assign(S.suche, { q: "", kategorie: "", konto: "", pruefen: false, offen: true, von: "", bis: "" });
+  tabWechseln("eintraege");
+}
 async function pruefenAnsicht() {
   S.tab = "pruefen";
   $$(".tabs [data-tab]").forEach((b) => b.classList.toggle("aktiv", b.dataset.tab === "uebersicht"));
@@ -771,6 +780,7 @@ function erfassen(e = null) {
     <div class="zwei"><label class="feld"><span>Datum und Uhrzeit</span><input id="datum" type="datetime-local" value="${esc(d.datum.slice(0, 16))}"></label>
       <label class="feld"><span>Konto</span><select id="konto">${S.meta.konten.filter((k) => !k.archiviert || k.id === d.konto_id).map((k) => `<option value="${k.id}" ${k.id === d.konto_id ? "selected" : ""}>${esc(k.icon)} ${esc(k.name)}</option>`).join("")}</select></label></div>
     <label class="feld"><span>Notiz</span><input id="notiz" value="${esc(d.notiz || "")}" placeholder="optional"></label>
+    ${checkZeile("offen", !!(e && e.offen), "<b>Noch offen</b> – Betrag kann sich noch ändern oder der Eintrag entfällt evtl.")}
     <label class="feld"><span>Mein Anteil (leer = voller Betrag)</span><input id="anteil" autocomplete="off" value="${esc(e ? anteilText(e) : "")}" placeholder="z. B. 1/6, 50 % oder 2,67"></label>
     <div class="anteil-info" id="anteil-info"></div>
     ${(e && (e.haendler_roh || e.bezeichnung)) || neu ? `<div id="anteil-optionen">${checkZeile("anteil-regel", true, `<span id="anteil-regel-text"></span>`)}
@@ -975,6 +985,7 @@ function erfassen(e = null) {
       betrag: Math.abs(betrag) * vorzeichen, waehrung: $("#waehrung").value, kategorie_id: katId,
       bezeichnung: $("#bezeichnung").value.trim(), notiz: $("#notiz").value.trim(), datum: $("#datum").value,
       konto_id: +$("#konto").value, regel_lernen: $("#regel") ? $("#regel").checked : false,
+      offen: $("#offen").checked,
     };
     if (kurs && daten.waehrung !== "EUR") daten.kurs = kurs;
     if ($("#anteil").value.trim() !== anteilStart) {
@@ -1128,6 +1139,7 @@ async function mehrAnsicht() {
       <button id="m-regeln"><span class="ic">🧠</span>Gelernte Zuordnungen</button>
       <button id="m-anteile"><span class="ic">➗</span>Eigenanteile</button>
       <button id="m-pruefen"><span class="ic">🔎</span>Zu prüfen<span class="rechts">${m.kennzahlen.pruefen}</span></button>
+      <button id="m-offen"><span class="ic">⏳</span>Noch offen<span class="rechts">${m.kennzahlen.offen || 0}</span></button>
     </div>
     <div class="abschnitt">Automatik</div>
     <div class="mehr-liste">
@@ -1167,6 +1179,7 @@ async function mehrAnsicht() {
   $("#m-start").onclick = startseiteSheet;
   $("#m-offline").onclick = offlineAnsicht;
   $("#m-pruefen").onclick = pruefenAnsicht;
+  $("#m-offen").onclick = offeneAnzeigen;
   $("#m-ki").onclick = kiAnsicht;
   $("#m-banken").onclick = bankenAnsicht;
   $("#m-nach")?.addEventListener("click", () => nachholenAnsicht());
@@ -1366,7 +1379,7 @@ async function wiederkehrendAnsicht() {
       <div class="knopfreihe"><button class="knopf" id="wk-alle">Alle Buchungen zeigen</button><button class="knopf zweit" id="wk-weg">Ausblenden</button></div>`);
     $("#wk-alle").onclick = () => {
       sheetSchliessen();
-      Object.assign(S.suche, { q: x.name, kategorie: "", konto: "", pruefen: false, von: "", bis: "", sortierung: "" });
+      Object.assign(S.suche, { q: x.name, kategorie: "", konto: "", pruefen: false, offen: false, von: "", bis: "", sortierung: "" });
       tabWechseln("eintraege");
     };
     $("#wk-weg").onclick = () => { wkIgnorieren([...wkIgnoriert(), x.schluessel]); sheetSchliessen(); toast(`${x.name} ausgeblendet`); wiederkehrendAnsicht(); };
@@ -1651,7 +1664,7 @@ function exportSheet(filter) {
     <div class="knopfreihe"><button class="knopf zweit" id="ablage">Excel im Ordner /share/ausgaben ablegen</button></div>
     <p class="leise" style="font-size:13px">Falls der Download in der Home-Assistant-App nicht startet: Datei im Share-Ordner ablegen und per Samba oder Cyberduck abholen.</p>`);
   const laden = async (format) => {
-    const p = qs({ ...filter, pruefen: filter.pruefen ? 1 : "", von: $("#evon").value, bis: $("#ebis").value, format });
+    const p = qs({ ...filter, pruefen: filter.pruefen ? 1 : "", offen: filter.offen ? 1 : "", von: $("#evon").value, bis: $("#ebis").value, format });
     try {
       const r = await api("export?" + p, { roh: true });
       const blob = await r.blob();
@@ -1664,7 +1677,7 @@ function exportSheet(filter) {
   };
   $("#xlsx").onclick = () => laden("xlsx");
   $("#ablage").onclick = async () => {
-    try { const r = await api("export?" + qs({ ...filter, pruefen: filter.pruefen ? 1 : "", von: $("#evon").value, bis: $("#ebis").value, ablage: 1 })); toast("Abgelegt: " + r.pfad); }
+    try { const r = await api("export?" + qs({ ...filter, pruefen: filter.pruefen ? 1 : "", offen: filter.offen ? 1 : "", von: $("#evon").value, bis: $("#ebis").value, ablage: 1 })); toast("Abgelegt: " + r.pfad); }
     catch (err) { toast(err.message); }
   };
   $("#csv").onclick = () => laden("csv");
@@ -2290,7 +2303,7 @@ function neuZeichnen() {
   p.then(() => window.scrollTo(0, y)).catch(() => {});
 }
 $$(".tabs [data-tab]").forEach((b) => (b.onclick = () => {
-  if (b.dataset.tab === "eintraege" && S.tab !== "eintraege") Object.assign(S.suche, { q: "", kategorie: "", konto: "", pruefen: false, von: "", bis: "" });
+  if (b.dataset.tab === "eintraege" && S.tab !== "eintraege") Object.assign(S.suche, { q: "", kategorie: "", konto: "", pruefen: false, offen: false, von: "", bis: "" });
   if (b.dataset.tab === "uebersicht" && S.tab === "uebersicht") { S.zeitraum.anker = new Date(); S.bandAuswahl = null; }
   tabWechseln(b.dataset.tab);
 }));
