@@ -1143,6 +1143,7 @@ async function mehrAnsicht() {
     <div class="mehr-liste">
       <button id="m-design"><span class="ic">🎨</span>Design<span class="rechts">${esc((DESIGNS[S.design.id] || DESIGNS.salbei).name)} · ${esc(MODI.find(([x]) => x === S.design.modus)[1])}${farbpunkte(S.design.id)}</span></button>
       <button id="m-offline"><span class="ic">📶</span>Offline &amp; HTTPS<span class="rechts">${location.protocol === "https:" && navigator.serviceWorker?.controller ? "aktiv" : "einrichten"}</span></button>
+      <button id="m-vib"><span class="ic">📳</span>Vibration<span class="rechts">${{ a: "Variante 1", b: "Variante 2", aus: "aus" }[(() => { try { return localStorage.getItem("haptik_variante") || "a"; } catch (_) { return "a"; } })()] || ""}</span></button>
       <button id="m-start"><span class="ic">🏠</span>Startseite<span class="rechts">${esc(STARTSEITEN[S.meta.darstellung.startseite] || "Übersicht")}</span></button>
     </div>
     <div class="abschnitt">Info</div>
@@ -1165,6 +1166,7 @@ async function mehrAnsicht() {
   $("#m-reset").onclick = zuruecksetzenSheet;
   $("#m-design").onclick = designAnsicht;
   $("#m-start").onclick = startseiteSheet;
+  $("#m-vib").onclick = vibrationSheet;
   $("#m-offline").onclick = offlineAnsicht;
   $("#m-pruefen").onclick = pruefenAnsicht;
   $("#m-ki").onclick = kiAnsicht;
@@ -2152,9 +2154,24 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#she
 const ZIEH_SCHWELLE = 115;
 // Fühlbares Feedback. iOS-Safari kennt navigator.vibrate nicht; ab iOS 18 löst das Umschalten
 // eines Schalters (<input type=checkbox switch>) aber das System-Haptik-Feedback aus.
-function haptik() {
+// Zwei Wege, weil iOS-Versionen sich unterscheiden: (a) kurzlebiger versteckter Schalter im <head>,
+// (b) dauerhafter, unsichtbarer Schalter im <body>. Gewählt wird unter Mehr → Vibration.
+function haptik(variante = null) {
+  const v = variante || (() => { try { return localStorage.getItem("haptik_variante") || "a"; } catch (_) { return "a"; } })();
+  if (v === "aus") return;
   try {
     if (navigator.vibrate && navigator.vibrate(12)) return;
+    if (v === "b") {
+      let l = $("#haptik-schalter");
+      if (!l) {
+        l = document.createElement("label"); l.id = "haptik-schalter"; l.setAttribute("aria-hidden", "true");
+        l.style.cssText = "position:fixed;left:-100px;top:0;width:1px;height:1px;opacity:0;pointer-events:none;overflow:hidden";
+        const i = document.createElement("input"); i.type = "checkbox"; i.setAttribute("switch", ""); i.tabIndex = -1;
+        l.appendChild(i); document.body.appendChild(l);
+      }
+      l.click();
+      return;
+    }
     const l = document.createElement("label");
     const i = document.createElement("input");
     i.type = "checkbox"; i.setAttribute("switch", "");
@@ -2162,6 +2179,21 @@ function haptik() {
     l.appendChild(i);
     document.head.appendChild(l); l.click(); l.remove();
   } catch (_) { /* kein Feedback möglich */ }
+}
+function vibrationSheet() {
+  const aktuell = (() => { try { return localStorage.getItem("haptik_variante") || "a"; } catch (_) { return "a"; } })();
+  sheetOeffnen(`<div class="griff"></div><div class="sheet-kopf"><span style="width:60px"></span><h3>Vibration</h3><button data-zu>Fertig</button></div>
+    <p class="leise" style="font-size:14px">Beim Herunterziehen zum Aktualisieren gibt das iPhone einen kurzen Tipp. Web-Apps können das nur über einen Umweg (ab iOS 18). Tippe die Varianten an und behalte die, bei der du etwas spürst.</p>
+    <div class="knopfreihe"><button class="knopf zweit" data-hv="a">Variante 1 testen</button><button class="knopf zweit" data-hv="b">Variante 2 testen</button></div>
+    <div class="knopfreihe"><button class="knopf zweit" data-hv="aus">Vibration aus</button></div>
+    <p class="leise" id="hv-text" style="font-size:13px;margin-top:12px">Aktiv: ${{ a: "Variante 1", b: "Variante 2", aus: "aus" }[aktuell]}</p>
+    <p class="leise" style="font-size:12.5px">Nichts zu spüren? Prüfe Einstellungen → Töne &amp; Haptik → Systemhaptik.</p>`);
+  $$("[data-hv]").forEach((b) => (b.onclick = () => {
+    const v = b.dataset.hv;
+    haptik(v);
+    try { localStorage.setItem("haptik_variante", v); } catch (_) { /* egal */ }
+    $("#hv-text").textContent = `Aktiv: ${{ a: "Variante 1", b: "Variante 2", aus: "aus" }[v]}`;
+  }));
 }
 function ziehenAnzeige() {
   let el = $("#ziehen");

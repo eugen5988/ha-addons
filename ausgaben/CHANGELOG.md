@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.15.3
+
+- Neu unter Mehr → Darstellung: **Vibration** mit zwei Varianten zum Testen (und „aus“). Die gewählte Variante wird beim Herunterziehen zum Aktualisieren verwendet.
+
 ## 1.15.2
 
 - „Nach Updates suchen“ findet eine gerade veröffentlichte Version jetzt beim ersten Mal: Die App wartet, bis Home Assistant die Add-on-Liste neu eingelesen hat (dauert etwa 10–20 Sekunden), statt sofort „Kein Update vorhanden“ zu melden.
