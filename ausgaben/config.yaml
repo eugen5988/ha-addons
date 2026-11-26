@@ -1,5 +1,5 @@
 name: Ausgaben
-version: "1.16.1"
+version: "1.17.0"
 slug: ausgaben
 description: Haushaltsbuch mit automatischer Erfassung (Trade Republic, DKB, comdirect), Kassenbon-Scan und KI-Kategorisierung
 url: https://github.com/eugen5988/ha-addons/tree/main/ausgaben

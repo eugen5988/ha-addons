@@ -147,6 +147,16 @@ def sensoren_senden():
                    "kategorie": e["kategorie"], "betrag": round((e["betrag_eur"] or 0) * (e["anteil"] if e["anteil"] is not None else 1), 2), "pruefen": bool(e["pruefen"])}
                   for e in letzte])
     sende("jahr", k["jahr"], "Allgemein Finanzen Ausgaben Jahr")
+    # Letzte Einträge einzeln, z. B. für die Apple Watch (HA-App): Name = Bezeichnung, Zustand = Betrag
+    for i in range(5):
+        e = letzte[i] if i < len(letzte) else None
+        if e:
+            betrag = round((e["betrag_eur"] or 0) * (e["anteil"] if e["anteil"] is not None else 1), 2)
+            sende(f"letzte_{i + 1}", betrag, e["bezeichnung"] or e["haendler_roh"] or e["kategorie"] or "Ohne Bezeichnung",
+                  icon="mdi:receipt-text", datum=e["datum"][:16].replace("T", " "), kategorie=e["kategorie"],
+                  konto=e["konto"], offen=bool(e.get("offen")), pruefen=bool(e["pruefen"]), position=i + 1)
+        else:
+            sende(f"letzte_{i + 1}", 0, "–", icon="mdi:receipt-text", position=i + 1)
     _ha(f"states/sensor.{praefix}_zu_prufen",
         {"state": k["pruefen"], "attributes": {"friendly_name": "Allgemein Finanzen Ausgaben zu prüfen",
                                               "icon": "mdi:tag-search", "unit_of_measurement": "Einträge"}})

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.17.0
+
+- Neue Sensoren für die letzten 5 Einträge (`sensor.allgemein_finanzen_ausgaben_letzte_1` bis `_5`): Name = Bezeichnung, Wert = Betrag (Eigenanteil), dazu Datum, Kategorie und Konto als Attribute. Gedacht z. B. für die Home-Assistant-App auf der Apple Watch.
+
 ## 1.16.1
 
 - Fehler behoben: Die Seite „Einträge“ zeigte seit 1.16.0 ohne aktiven Filter nur eine Fehlermeldung („scrollIntoView is not a function“).
