@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.19.0
+
+- Fix & variabel: neue Umschaltung **Monat / Jahr**. Im Jahr stehen die tatsächlich gebuchten Fix- und variablen Kosten mit Ø pro Monat; je Kategorie eine Zeile pro Posten bzw. Händler (z. B. „Edeka 20× · Ø 52,53 €“), Antippen führt zu allen Buchungen im Jahr.
+
 ## 1.18.0
 
 - Neu unter Mehr → Daten: **Fix & variabel**. Zeigt je Monat die Fixkosten (regelmäßig wiederkehrende Ausgaben) und die variablen Ausgaben, jeweils nach Kategorien aufklappbar bis zur einzelnen Buchung.
