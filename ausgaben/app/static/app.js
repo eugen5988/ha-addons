@@ -1283,7 +1283,7 @@ const tageZwischen = (a, b) => Math.round((ausIso(b) - ausIso(a)) / 86400000);
 function wkIgnoriert() { try { return JSON.parse(localStorage.getItem("ausgaben_wk_ignoriert") || "[]"); } catch (_) { return []; } }
 function wkIgnorieren(liste) { try { localStorage.setItem("ausgaben_wk_ignoriert", JSON.stringify(liste)); } catch (_) { /* egal */ } }
 
-function wiederkehrendErkennen(eintraege) {
+function wiederkehrendErkennen(eintraege, stichtag = null) {
   const gruppen = new Map();
   for (const e of eintraege) {
     if (!(eigen(e) > 0)) continue;
@@ -1293,7 +1293,7 @@ function wiederkehrendErkennen(eintraege) {
     if (!gruppen.has(schluessel)) gruppen.set(schluessel, { name, liste: [] });
     gruppen.get(schluessel).liste.push(e);
   }
-  const heute = isoTag(new Date());
+  const heute = stichtag || isoTag(new Date());
   const ergebnis = [];
   for (const [schluessel, g] of gruppen) {
     // Mehrere Buchungen am selben Tag zusammenfassen
@@ -1308,10 +1308,11 @@ function wiederkehrendErkennen(eintraege) {
     if (!r || tage.length < r.mindest) continue;
     const passend = abstaende.filter((a) => a >= r.min && a <= r.max).length / abstaende.length;
     if (passend < 0.7) continue;
-    // Betrag muss weitgehend gleich bleiben (sonst ist es z. B. der Supermarkt)
+    // Betrag muss von Buchung zu Buchung weitgehend gleich bleiben (sonst ist es z. B. der Supermarkt).
+    // Verglichen wird mit der jeweils vorigen Buchung, damit einzelne Preiserhöhungen (Miete, Abo) nicht stören.
     const mBetrag = median(betraege.slice(-6));
-    const gleich = betraege.filter((b) => Math.abs(b - mBetrag) <= Math.max(1, mBetrag * 0.15)).length / betraege.length;
-    if (gleich < 0.7) continue;
+    const stabil = betraege.slice(1).filter((b, i) => Math.abs(b - betraege[i]) <= Math.max(1, betraege[i] * 0.15)).length / (betraege.length - 1);
+    if (stabil < 0.7) continue;
     // Nur zwei Buchungen: nur bei nahezu gleichem Betrag, und als "vermutet" markiert
     const sicher = tage.length >= 3;
     if (!sicher && Math.abs(betraege[0] - betraege[1]) > Math.max(0.05, mBetrag * 0.03)) continue;
@@ -1354,6 +1355,60 @@ function wkFixSetzen(liste) { try { localStorage.setItem("ausgaben_wk_fix", JSON
 const wkSchluessel = (e) => (e.bezeichnung || e.haendler_roh || "").trim().toLowerCase();
 
 // ---------------------------------------------------------------- Fix & variabel
+// Jahresvergleich: Fix/variabel je Kalenderjahr, bis zu 10 Jahre. Erkennung je Jahr mit Daten aus Vor- und Folgejahr,
+// damit z. B. Mieterhöhungen über die Jahre die Zuordnung nicht stören.
+async function zehnJahreLaden() {
+  const von = `${new Date().getFullYear() - 10}-01-01`;
+  const c = S._zehnJahre;
+  if (c && Date.now() - c.zeit < 300000) return c.daten;
+  const alle = [];
+  for (let offset = 0; offset < 100000;) {
+    const r = await api("eintraege?" + qs({ von, limit: 2000, offset, sortierung: "alt" }));
+    alle.push(...r.eintraege);
+    offset += r.eintraege.length;
+    if (!r.eintraege.length || offset >= r.anzahl) break;
+  }
+  S._zehnJahre = { zeit: Date.now(), daten: alle };
+  return alle;
+}
+async function fvJahresvergleich(f) {
+  const box = $("#fv-jahre");
+  let alle;
+  try { alle = await zehnJahreLaden(); } catch (err) { if (box) box.querySelector(".leer").textContent = err.message; return; }
+  if (!$("#fv-jahre")) return; // inzwischen weitergeblättert
+  const ignoriert = wkIgnoriert(), manuell = wkFix(), heute = isoTag(new Date()), diesesJahr = new Date().getFullYear();
+  const daten = [];
+  for (let y = diesesJahr - 9; y <= diesesJahr; y++) {
+    const yv = `${y}-01-01`, yb = `${y}-12-31`;
+    const fenster = alle.filter((e) => e.datum >= `${y - 1}-01-01` && e.datum <= `${y + 1}-12-31T99`);
+    const posten = new Set(wiederkehrendErkennen(fenster, yb < heute ? yb : heute)
+      .filter((x) => (x.sicher || x.tage > 150) && !ignoriert.includes(x.schluessel)).map((x) => x.schluessel));
+    let fx = 0, va = 0;
+    for (const e of fenster) {
+      const t = e.datum.slice(0, 10), w = eigen(e);
+      if (t < yv || t > yb || w == null) continue;
+      const s = wkSchluessel(e);
+      if (posten.has(s) || manuell.includes(s)) fx += w; else va += w;
+    }
+    const laufend = y === diesesJahr;
+    daten.push({ jahr: y, label: laufend ? `${y} (bis heute)` : String(y), kurz: String(y), fx, va, aktiv: y === f.monat.getFullYear(),
+      monate: laufend ? new Date().getMonth() + 1 : 12 });
+  }
+  while (daten.length > 1 && daten[0].fx + daten[0].va === 0) daten.shift(); // Jahre vor den ersten Daten weglassen
+  const ziel = $("#fv-jahre");
+  ziel.innerHTML = `<h2>Jahresvergleich<span class="leise"><i class="fv-punkt fix"></i>Fix <i class="fv-punkt var"></i>Variabel</span></h2>
+    ${fvDiagramm(daten)}<div class="diagramm-info" id="fv-jinfo">Tippe auf ein Jahr für Details</div>`;
+  $$(".fvbar", ziel).forEach((r) => (r.onclick = () => {
+    const d = daten[+r.dataset.i];
+    $$(".fvbar", ziel).forEach((x) => x.classList.toggle("gewaehlt", x === r));
+    $("#fv-jinfo").innerHTML = `${esc(d.label)}: Fix <b class="zahl">${geld(d.fx)}</b> · Variabel <b class="zahl">${geld(d.va)}</b><br>Ø ${geld((d.fx + d.va) / d.monate)} pro Monat${d.aktiv ? "" : ' <button class="knopf zweit klein" style="margin-left:6px">Öffnen</button>'}`;
+    $("#fv-jinfo button")?.addEventListener("click", () => {
+      const jetzt = new Date();
+      f.monat = d.jahr === jetzt.getFullYear() ? new Date(d.jahr, jetzt.getMonth(), 1) : new Date(d.jahr, 11, 1);
+      fixVariabelAnsicht(); window.scrollTo(0, 0);
+    });
+  }));
+}
 // Gestapelte Monatsbalken: unten Fix, oben Variabel, gestrichelt der Durchschnitt
 function fvDiagramm(daten) {
   const b = Math.round(Math.max(280, Math.min(728, ansicht.clientWidth - 64))), h = 160, unten = 18, oben = 8;
@@ -1407,7 +1462,10 @@ async function fixVariabelAnsicht() {
   const alle = await zweiJahreLaden(new Date(Math.min(+bisD, Date.now())));
   const ignoriert = wkIgnoriert(), manuell = wkFix();
   // Jährliche/halbjährliche Posten kommen in zwei Jahren nur zwei- bis dreimal vor: dann reicht „vermutet“
-  const posten = wiederkehrendErkennen(alle).filter((x) => (x.sicher || x.tage > 150) && !ignoriert.includes(x.schluessel));
+  const fensterBis = isoTag(new Date(bisD.getFullYear() + 1, bisD.getMonth(), bisD.getDate()));
+  const stichtag = bis < isoTag(new Date()) ? bis : isoTag(new Date());
+  const posten = wiederkehrendErkennen(alle.filter((e) => e.datum.slice(0, 10) <= fensterBis), stichtag)
+    .filter((x) => (x.sicher || x.tage > 150) && !ignoriert.includes(x.schluessel));
   const MONATE_JE = { "alle 2 Monate": 2, vierteljährlich: 3, halbjährlich: 6, jährlich: 12 };
   const monatsanteil = (x) => (MONATE_JE[x.rhythmus] ? x.betrag / MONATE_JE[x.rhythmus] : x.proMonat);
   const postenNach = new Map(posten.map((x) => [x.schluessel, x]));
@@ -1513,16 +1571,18 @@ async function fixVariabelAnsicht() {
     </div>
     <div class="block"><h2>${jahr ? "Pro Monat" : "Letzte 12 Monate"}<span class="leise"><i class="fv-punkt fix"></i>Fix <i class="fv-punkt var"></i>Variabel</span></h2>
       ${fvDiagramm(diagrammMonate)}<div class="diagramm-info" id="fv-info">Tippe auf einen Monat für Details</div></div>
+    ${jahr ? `<div class="block" id="fv-jahre"><h2>Jahresvergleich<span class="leise"><i class="fv-punkt fix"></i>Fix <i class="fv-punkt var"></i>Variabel</span></h2><div class="leer">Lade die letzten Jahre …</div></div>` : ""}
     <p class="leise" style="font-size:13px;margin:6px 4px">Zusammen ${geld(gesamt)}${laufend ? " bis heute" : ""}${jahr ? `, Ø ${geld(gesamt / monateImZeitraum)} pro Monat${laufend ? ` (${monateImZeitraum} ${monateImZeitraum === 1 ? "Monat" : "Monate"})` : ""}` : umlegen ? ", seltene Fixkosten als Monatsanteil" : ""}.</p>
     ${jahr ? "" : `<div class="mehr-liste">${checkZeile("fv-umlegen", f.umlegen, "Vierteljährliche und jährliche Kosten auf die Monate verteilen")}</div>`}
     <div class="abschnitt">Fixkosten</div>
-    <div class="block fv-block">${fixHtml || '<div class="leer">Keine Fixkosten in diesem ${jahr ? "Jahr" : "Monat"} erkannt.</div>'}</div>
+    <div class="block fv-block">${fixHtml || `<div class="leer">Keine Fixkosten in diesem ${jahr ? "Jahr" : "Monat"} erkannt.</div>`}</div>
     <div class="abschnitt">Variable Ausgaben</div>
-    <div class="block fv-block">${varHtml || '<div class="leer">Keine variablen Ausgaben in diesem ${jahr ? "Jahr" : "Monat"}.</div>'}</div>
+    <div class="block fv-block">${varHtml || `<div class="leer">Keine variablen Ausgaben in diesem ${jahr ? "Jahr" : "Monat"}.</div>`}</div>
     <p class="leise" style="font-size:13px;margin:16px 4px">Fixkosten sind Ausgaben, die regelmäßig mit gleicher Bezeichnung und weitgehend gleichem Betrag kommen (wie unter „Wiederkehrende Ausgaben“). Tippe auf eine Ausgabe, um sie zu öffnen oder anders zuzuordnen.</p>`;
-  $$("#fv-inhalt .fvbar").forEach((r) => (r.onclick = () => {
+  if (jahr) fvJahresvergleich(f);
+  $$("#fv-inhalt > .block:first-of-type .fvbar").forEach((r) => (r.onclick = () => {
     const d = diagrammMonate[+r.dataset.i];
-    $$("#fv-inhalt .fvbar").forEach((x) => x.classList.toggle("gewaehlt", x === r));
+    $$("#fv-inhalt > .block:first-of-type .fvbar").forEach((x) => x.classList.toggle("gewaehlt", x === r));
     $("#fv-info").innerHTML = `${esc(d.label)}: Fix <b class="zahl">${geld(d.fx)}</b> · Variabel <b class="zahl">${geld(d.va)}</b>${!d.zukunft && (jahr || !d.aktiv) ? ' <button class="knopf zweit klein" style="margin-left:6px">Öffnen</button>' : ""}`;
     $("#fv-info button")?.addEventListener("click", () => { f.einheit = "monat"; f.monat = d.m; fixVariabelAnsicht(); });
   }));
@@ -2542,7 +2602,7 @@ function tabWechseln(tab) {
 }
 function neuZeichnen() {
   const y = window.scrollY;
-  S._zweiJahre = null; // Daten haben sich geändert
+  S._zweiJahre = S._zehnJahre = null; // Daten haben sich geändert
   const p = (S.tab === "mehr" && S.unterseiteAktiv ? S.unterseiteAktiv : ANSICHTEN[S.tab])();
   p.then(() => window.scrollTo(0, y)).catch(() => {});
 }

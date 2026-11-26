@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.21.0
+
+- Fix & variabel → Jahr: neues Diagramm **Jahresvergleich** mit Fix- und variablen Kosten je Kalenderjahr (bis zu 10 Jahre). Jahr antippen zeigt Summen und Ø pro Monat, „Öffnen“ springt in dieses Jahr.
+- Erkennung wiederkehrender Ausgaben robuster: Preiserhöhungen (z. B. Miete, Abo) brechen die Erkennung nicht mehr ab, weil jede Buchung mit der vorigen verglichen wird. Für vergangene Zeiträume wird mit dem Stand von damals gerechnet.
+- Fehler behoben: Bei leeren Listen stand statt „Keine Fixkosten in diesem Jahr erkannt“ ein Platzhaltertext.
+
 ## 1.20.0
 
 - Fix & variabel mit Diagramm: gestapelte Balken je Monat (unten Fix, oben Variabel, gestrichelt der Durchschnitt). In der Monatsansicht die letzten 12 Monate mit dem gewählten Monat hervorgehoben, in der Jahresansicht Januar bis Dezember. Monat antippen zeigt die Werte, „Öffnen“ springt in diesen Monat.
