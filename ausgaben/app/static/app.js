@@ -1120,6 +1120,7 @@ async function verlaufAnsicht() {
 
 // ---------------------------------------------------------------- Mehr
 async function mehrAnsicht() {
+  S.unterseiteAktiv = null;
   await metaLaden();
   const m = S.meta, tr = m.tr;
   const trProblem = tr.eingerichtet && ["login_noetig", "fehler"].includes(tr.zustand);
@@ -1135,6 +1136,7 @@ async function mehrAnsicht() {
       <button id="m-konten"><span class="ic">💳</span>Konten<span class="rechts">${m.konten.filter((k) => !k.archiviert).length}</span></button>
       ${m.banken.offen_nachholen ? `<button id="m-nach"><span class="ic">📋</span>Bankumsätze durchsehen<span class="rechts"><span class="marke pruefen">${m.banken.offen_nachholen}</span></span></button>` : ""}
       <button id="m-dup"><span class="ic">👯</span>Doppelte Einträge finden</button>
+      <button id="m-fv"><span class="ic">⚖️</span>Fix &amp; variabel<span class="rechts">pro Monat</span></button>
       <button id="m-wk"><span class="ic">🔁</span>Wiederkehrende Ausgaben<span class="rechts">Abos, Lastschriften</span></button>
       <button id="m-regeln"><span class="ic">🧠</span>Gelernte Zuordnungen</button>
       <button id="m-anteile"><span class="ic">➗</span>Eigenanteile</button>
@@ -1173,6 +1175,7 @@ async function mehrAnsicht() {
   $("#m-regeln").onclick = regelnAnsicht;
   $("#m-anteile").onclick = anteileAnsicht;
   $("#m-wk").onclick = wiederkehrendAnsicht;
+  $("#m-fv").onclick = fixVariabelAnsicht;
   $("#m-dup").onclick = doppelteAnsicht;
   $("#m-reset").onclick = zuruecksetzenSheet;
   $("#m-design").onclick = designAnsicht;
@@ -1260,6 +1263,7 @@ function updateWarten(alt, neu) {
 }
 
 function unterseite(titel, html) {
+  S.unterseiteAktiv = null;
   ansicht.innerHTML = `<div class="kopf"><button class="rund" id="zurueck" aria-label="Zurück">‹</button><h1>${esc(titel)}</h1></div>${html}`;
   $("#zurueck").onclick = mehrAnsicht;
 }
@@ -1329,16 +1333,157 @@ function wiederkehrendErkennen(eintraege) {
   return ergebnis.sort((a, b) => b.proMonat - a.proMonat);
 }
 
-async function wiederkehrendAnsicht() {
-  unterseite("Wiederkehrend", '<div class="leer">Analysiere die letzten zwei Jahre …</div>');
-  const von = isoTag(new Date(new Date().getFullYear() - 2, new Date().getMonth(), 1));
+// Einträge der letzten zwei Jahre (für die Erkennung wiederkehrender Ausgaben), kurz zwischengespeichert
+async function zweiJahreLaden(bisMonat = null) {
+  const basis = bisMonat || new Date();
+  const von = isoTag(new Date(basis.getFullYear() - 2, basis.getMonth(), 1));
+  const c = S._zweiJahre;
+  if (c && c.von <= von && Date.now() - c.zeit < 120000) return c.daten.filter((e) => e.datum >= von);
   const alle = [];
-  for (let offset = 0; offset < 20000;) {
+  for (let offset = 0; offset < 30000;) {
     const r = await api("eintraege?" + qs({ von, limit: 2000, offset, sortierung: "alt" }));
     alle.push(...r.eintraege);
     offset += r.eintraege.length;
     if (!r.eintraege.length || offset >= r.anzahl) break;
   }
+  S._zweiJahre = { von, zeit: Date.now(), daten: alle };
+  return alle;
+}
+function wkFix() { try { return JSON.parse(localStorage.getItem("ausgaben_wk_fix") || "[]"); } catch (_) { return []; } }
+function wkFixSetzen(liste) { try { localStorage.setItem("ausgaben_wk_fix", JSON.stringify(liste)); } catch (_) { /* egal */ } }
+const wkSchluessel = (e) => (e.bezeichnung || e.haendler_roh || "").trim().toLowerCase();
+
+// ---------------------------------------------------------------- Fix & variabel
+async function fixVariabelAnsicht() {
+  S.fv = S.fv || { monat: new Date(new Date().getFullYear(), new Date().getMonth(), 1), umlegen: true };
+  const f = S.fv;
+  const von = isoTag(f.monat), bisD = new Date(f.monat.getFullYear(), f.monat.getMonth() + 1, 0), bis = isoTag(bisD);
+  const laufend = bis >= isoTag(new Date());
+  unterseite("Fix & variabel", `<div class="zeitraum"><button class="rund" id="fv-zurueck" aria-label="Vormonat">‹</button>
+      <div class="label">${MONATE[f.monat.getMonth()]} ${f.monat.getFullYear()}</div>
+      <button class="rund" id="fv-vor" aria-label="Nächster Monat" ${laufend ? "disabled" : ""}>›</button></div>
+    <div id="fv-inhalt"><div class="leer">Analysiere die letzten zwei Jahre …</div></div>`);
+  S.unterseiteAktiv = fixVariabelAnsicht;
+  const navi = (n) => { f.monat = new Date(f.monat.getFullYear(), f.monat.getMonth() + n, 1); fixVariabelAnsicht(); };
+  $("#fv-zurueck").onclick = () => navi(-1);
+  $("#fv-vor").onclick = () => navi(1);
+
+  const alle = await zweiJahreLaden(new Date(Math.max(+f.monat, +new Date())));
+  const ignoriert = wkIgnoriert(), manuell = wkFix();
+  // Jährliche/halbjährliche Posten kommen in zwei Jahren nur zwei- bis dreimal vor: dann reicht „vermutet“
+  const posten = wiederkehrendErkennen(alle).filter((x) => (x.sicher || x.tage > 150) && !ignoriert.includes(x.schluessel));
+  const MONATE_JE = { "alle 2 Monate": 2, vierteljährlich: 3, halbjährlich: 6, jährlich: 12 };
+  const monatsanteil = (x) => (MONATE_JE[x.rhythmus] ? x.betrag / MONATE_JE[x.rhythmus] : x.proMonat);
+  const postenNach = new Map(posten.map((x) => [x.schluessel, x]));
+  const istFix = (e) => postenNach.has(wkSchluessel(e)) || manuell.includes(wkSchluessel(e));
+  const imMonat = alle.filter((e) => e.datum.slice(0, 10) >= von && e.datum.slice(0, 10) <= bis && eigen(e) != null);
+  const selten = (x) => x && x.tage > 40; // alle 2 Monate, vierteljährlich, halbjährlich, jährlich
+
+  // Fixe Zeilen: echte Buchungen; seltene Posten wahlweise als Monatsanteil
+  const fix = [], variabel = [];
+  for (const e of imMonat) {
+    if (!istFix(e)) { variabel.push(e); continue; }
+    const x = postenNach.get(wkSchluessel(e));
+    if (f.umlegen && selten(x)) continue; // wird unten als Monatsanteil gezählt
+    fix.push({ art: "buchung", e, name: e.bezeichnung || e.haendler_roh || "Ohne Bezeichnung", betrag: eigen(e),
+      kategorie_id: e.kategorie_id, rhythmus: x ? x.rhythmus : "als fix markiert", schluessel: wkSchluessel(e) });
+  }
+  if (f.umlegen) {
+    for (const x of posten.filter(selten)) {
+      const lief = x.erster <= bis && tageZwischen(x.letzter, von) <= x.tage + 10; // im Monat noch aktiv
+      if (!lief) continue;
+      const katId = alle.findLast((e) => wkSchluessel(e) === x.schluessel)?.kategorie_id ?? null;
+      fix.push({ art: "anteil", name: x.name, betrag: monatsanteil(x), kategorie_id: katId, rhythmus: x.rhythmus, schluessel: x.schluessel, posten: x });
+    }
+  }
+  const summe = (l, fn) => l.reduce((s, x) => s + fn(x), 0);
+  const fixSumme = summe(fix, (x) => x.betrag), varSumme = summe(variabel, eigen);
+  const gruppieren = (liste, betragVon) => {
+    const m = new Map();
+    for (const x of liste) {
+      const id = x.kategorie_id ?? x.e?.kategorie_id ?? null;
+      if (!m.has(id)) m.set(id, { id, k: kat(id), summe: 0, liste: [] });
+      const g = m.get(id); g.summe += betragVon(x); g.liste.push(x);
+    }
+    return [...m.values()].sort((a, b) => b.summe - a.summe);
+  };
+  const datum = (t) => ausIso(t).toLocaleDateString("de-DE", { day: "numeric", month: "short" });
+  const gruppeHtml = (g, gesamt, zeilen, typ) => `
+    <details class="fv-gruppe">
+      <summary class="katzeile">
+        <span class="ic" style="${icFarbe(g.k?.farbe || "#9AA3AE")}">${esc(g.k?.icon || "❔")}</span>
+        <span><span class="name">${esc(g.k?.name || "Ohne Kategorie")}</span><span class="balken"><i style="width:${gesamt > 0 ? Math.max(1, Math.round(g.summe / gesamt * 100)) : 0}%;background:${g.k?.farbe || "#9AA3AE"}"></i></span></span>
+        <span class="wert zahl">${geld(g.summe)}<small>${gesamt > 0 ? Math.round(g.summe / gesamt * 100) : 0} %, ${g.liste.length}×</small></span>
+      </summary>
+      <div class="fv-zeilen">${zeilen}</div>
+    </details>`;
+  const fixGruppen = gruppieren(fix, (x) => x.betrag), varGruppen = gruppieren(variabel, eigen);
+  const fixHtml = fixGruppen.map((g) => gruppeHtml(g, fixSumme, g.liste.sort((a, b) => b.betrag - a.betrag).map((x, i) => `
+      <button class="fv-zeile" data-fix="${esc(x.schluessel)}" ${x.e ? `data-id="${x.e.id}"` : ""}>
+        <span style="min-width:0;flex:1"><span class="fv-name">${esc(x.name)}</span>
+          <small class="leise">${esc(x.rhythmus)}${x.art === "anteil" ? ` · ${geld(x.posten.betrag)} ${x.posten.tage > 300 ? "im Jahr" : "je Zahlung"}, Monatsanteil` : ` · ${datum(x.e.datum)}`}</small></span>
+        <span class="zahl">${geld(x.betrag)}</span></button>`).join(""), "fix")).join("");
+  const varHtml = varGruppen.map((g) => gruppeHtml(g, varSumme, g.liste.sort((a, b) => b.datum.localeCompare(a.datum)).map((e) => `
+      <button class="fv-zeile" data-var="${e.id}">
+        <span style="min-width:0;flex:1"><span class="fv-name">${esc(e.bezeichnung || e.haendler_roh || "Ohne Bezeichnung")}</span>
+          <small class="leise">${datum(e.datum)}${e.konto ? " · " + esc(e.konto) : ""}</small></span>
+        <span class="zahl">${geld(eigen(e))}</span></button>`).join(""), "var")).join("");
+  const gesamt = fixSumme + varSumme;
+  const teil = (n) => (gesamt > 0 ? Math.round(n / gesamt * 100) : 0);
+  $("#fv-inhalt").innerHTML = `
+    <div class="fv-kacheln">
+      <div class="fv-kachel"><div class="leise">Fix</div><div class="fv-wert zahl">${geld(fixSumme)}</div><div class="leise">${teil(fixSumme)} %</div></div>
+      <div class="fv-kachel"><div class="leise">Variabel</div><div class="fv-wert zahl">${geld(varSumme)}</div><div class="leise">${teil(varSumme)} %</div></div>
+    </div>
+    <div class="band" aria-hidden="true"><span style="flex-grow:${fixSumme || 0.0001};background:var(--akzent)"></span><span style="flex-grow:${varSumme || 0.0001};background:var(--leise)"></span></div>
+    <p class="leise" style="font-size:13px;margin:6px 4px">Zusammen ${geld(gesamt)}${laufend ? " bis heute" : ""}${f.umlegen ? ", seltene Fixkosten als Monatsanteil" : ""}.</p>
+    <div class="mehr-liste">${checkZeile("fv-umlegen", f.umlegen, "Vierteljährliche und jährliche Kosten auf die Monate verteilen")}</div>
+    <div class="abschnitt">Fixkosten</div>
+    <div class="block fv-block">${fixHtml || '<div class="leer">Keine Fixkosten in diesem Monat erkannt.</div>'}</div>
+    <div class="abschnitt">Variable Ausgaben</div>
+    <div class="block fv-block">${varHtml || '<div class="leer">Keine variablen Ausgaben in diesem Monat.</div>'}</div>
+    <p class="leise" style="font-size:13px;margin:16px 4px">Fixkosten sind Ausgaben, die regelmäßig mit gleicher Bezeichnung und weitgehend gleichem Betrag kommen (wie unter „Wiederkehrende Ausgaben“). Tippe auf eine Ausgabe, um sie zu öffnen oder anders zuzuordnen.</p>`;
+  $("#fv-umlegen").onchange = (ev) => { f.umlegen = ev.target.checked; fixVariabelAnsicht(); };
+  const eintragOeffnen = (id) => { const e = alle.find((x) => x.id === id); if (e) { sheetSchliessen(); erfassen(e); } };
+  $$("[data-fix]").forEach((b) => (b.onclick = () => {
+    const s = b.dataset.fix, x = fix.find((y) => y.schluessel === s && (!b.dataset.id || String(y.e?.id) === b.dataset.id));
+    const manuellFix = manuell.includes(s) && !postenNach.has(s);
+    sheetOeffnen(`<div class="griff"></div><div class="sheet-kopf"><button data-zu>Schließen</button><h3>${esc(x.name)}</h3><span style="width:60px"></span></div>
+      <div class="mehr-liste">
+        ${x.e ? `<button id="fv-oeffnen"><span class="ic">✏️</span>Buchung öffnen<span class="rechts zahl">${geld(x.betrag)}</span></button>` : ""}
+        <button id="fv-alle"><span class="ic">🔎</span>Alle Buchungen von „${esc(x.name)}“</button>
+        <button id="fv-variabel" style="color:var(--pruefen)"><span class="ic">↔️</span>Nicht als Fixkosten zählen</button>
+      </div>
+      ${x.posten || postenNach.get(s) ? `<p class="leise" style="font-size:13px">${esc((x.posten || postenNach.get(s)).rhythmus)}, zuletzt ${geld((x.posten || postenNach.get(s)).betrag)}.</p>` : ""}`);
+    $("#fv-oeffnen")?.addEventListener("click", () => eintragOeffnen(x.e.id));
+    $("#fv-alle").onclick = () => { sheetSchliessen(); Object.assign(S.suche, { q: x.name, kategorie: "", konto: "", pruefen: false, offen: false, von: "", bis: "", sortierung: "" }); tabWechseln("eintraege"); };
+    $("#fv-variabel").onclick = () => {
+      if (manuellFix) wkFixSetzen(wkFix().filter((y) => y !== s));
+      else wkIgnorieren([...wkIgnoriert(), s]);
+      sheetSchliessen(); toast(`„${x.name}“ zählt jetzt als variabel`); fixVariabelAnsicht();
+    };
+  }));
+  $$("[data-var]").forEach((b) => (b.onclick = () => {
+    const e = variabel.find((y) => String(y.id) === b.dataset.var);
+    const name = e.bezeichnung || e.haendler_roh || "";
+    sheetOeffnen(`<div class="griff"></div><div class="sheet-kopf"><button data-zu>Schließen</button><h3>${esc(name || "Ausgabe")}</h3><span style="width:60px"></span></div>
+      <div class="mehr-liste">
+        <button id="fv-oeffnen"><span class="ic">✏️</span>Buchung öffnen<span class="rechts zahl">${geld(eigen(e))}</span></button>
+        ${name ? `<button id="fv-fix"><span class="ic">📌</span>„${esc(name)}“ immer als Fixkosten zählen</button>` : ""}
+      </div>`);
+    $("#fv-oeffnen").onclick = () => eintragOeffnen(e.id);
+    $("#fv-fix")?.addEventListener("click", () => {
+      const s = wkSchluessel(e);
+      wkFixSetzen([...new Set([...wkFix(), s])]);
+      wkIgnorieren(wkIgnoriert().filter((y) => y !== s));
+      sheetSchliessen(); toast(`„${name}“ zählt jetzt als Fixkosten`); fixVariabelAnsicht();
+    });
+  }));
+}
+
+async function wiederkehrendAnsicht() {
+  unterseite("Wiederkehrend", '<div class="leer">Analysiere die letzten zwei Jahre …</div>');
+  const alle = await zweiJahreLaden();
   const ignoriert = wkIgnoriert();
   const gefunden = wiederkehrendErkennen(alle);
   const sichtbar = gefunden.filter((x) => !ignoriert.includes(x.schluessel));
@@ -2299,7 +2444,8 @@ function tabWechseln(tab) {
 }
 function neuZeichnen() {
   const y = window.scrollY;
-  const p = ANSICHTEN[S.tab]();
+  S._zweiJahre = null; // Daten haben sich geändert
+  const p = (S.tab === "mehr" && S.unterseiteAktiv ? S.unterseiteAktiv : ANSICHTEN[S.tab])();
   p.then(() => window.scrollTo(0, y)).catch(() => {});
 }
 $$(".tabs [data-tab]").forEach((b) => (b.onclick = () => {

@@ -394,3 +394,21 @@ details.version li { margin: 4px 0; overflow-wrap: anywhere; }
 .tabs button { position: relative; }
 .tabs button.punkt::after { content: ""; position: absolute; top: 4px; left: calc(50% + 9px); width: 9px; height: 9px;
   border-radius: 50%; background: var(--pruefen); box-shadow: 0 0 0 2px var(--flaeche); }
+
+/* Fix & variabel */
+.fv-kacheln { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 14px 0 10px; }
+.fv-kachel { background: var(--flaeche); border-radius: var(--radius); padding: 12px 14px; }
+.fv-kachel .leise { font-size: 13px; }
+.fv-wert { font-family: var(--anzeige); font-size: 24px; font-weight: 700; letter-spacing: -0.02em; margin: 2px 0; }
+.fv-block { padding-top: 4px; padding-bottom: 4px; }
+details.fv-gruppe + details.fv-gruppe { border-top: 1px solid var(--linie); }
+details.fv-gruppe summary { list-style: none; cursor: pointer; }
+details.fv-gruppe summary::-webkit-details-marker { display: none; }
+details.fv-gruppe summary.katzeile { border: 0; }
+.fv-zeilen { margin: 0 0 8px 44px; border-left: 2px solid var(--linie); }
+.fv-zeile { display: flex; align-items: center; gap: 10px; width: 100%; border: 0; background: none; text-align: left;
+  padding: 8px 4px 8px 12px; font: inherit; color: var(--tinte); }
+.fv-zeile + .fv-zeile { border-top: 1px solid var(--linie); }
+.fv-zeile .fv-name { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14.5px; }
+.fv-zeile small { display: block; font-size: 12.5px; }
+.fv-zeile .zahl { font-weight: 600; font-size: 14.5px; }

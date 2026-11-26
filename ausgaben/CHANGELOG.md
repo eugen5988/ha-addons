@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.18.0
+
+- Neu unter Mehr → Auswertung: **Fix & variabel**. Zeigt je Monat die Fixkosten (regelmäßig wiederkehrende Ausgaben) und die variablen Ausgaben, jeweils nach Kategorien aufklappbar bis zur einzelnen Buchung.
+- Schalter „Vierteljährliche und jährliche Kosten auf die Monate verteilen“: z. B. Versicherung 120 € im Quartal zählt dann jeden Monat mit 40 €.
+- Zuordnung anpassen: Variable Ausgabe antippen → „immer als Fixkosten zählen“; Fixkosten antippen → „Nicht als Fixkosten zählen“.
+- Jährliche Posten (z. B. KFZ-Steuer) werden schon ab zwei Buchungen als Fixkosten erkannt.
+
 ## 1.17.0
 
 - Neue Sensoren für die letzten 5 Einträge (`sensor.allgemein_finanzen_ausgaben_letzte_1` bis `_5`): Name = Bezeichnung, Wert = Betrag (Eigenanteil), dazu Datum, Kategorie und Konto als Attribute. Gedacht z. B. für die Home-Assistant-App auf der Apple Watch.
