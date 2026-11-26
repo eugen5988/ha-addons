@@ -1354,6 +1354,29 @@ function wkFixSetzen(liste) { try { localStorage.setItem("ausgaben_wk_fix", JSON
 const wkSchluessel = (e) => (e.bezeichnung || e.haendler_roh || "").trim().toLowerCase();
 
 // ---------------------------------------------------------------- Fix & variabel
+// Gestapelte Monatsbalken: unten Fix, oben Variabel, gestrichelt der Durchschnitt
+function fvDiagramm(daten) {
+  const b = Math.round(Math.max(280, Math.min(728, ansicht.clientWidth - 64))), h = 160, unten = 18, oben = 8;
+  const max = Math.max(1, ...daten.map((d) => d.fx + d.va));
+  const n = daten.length, slot = b / n, breite = Math.max(6, Math.min(30, slot * 0.62));
+  const y = (w) => (h - unten - oben) * (w / max);
+  const echte = daten.filter((d) => !d.zukunft && d.fx + d.va > 0);
+  const mittel = echte.length ? echte.reduce((s, d) => s + d.fx + d.va, 0) / echte.length : 0;
+  let svg = `<svg class="diagramm fv-diagramm" viewBox="0 0 ${b} ${h}" role="img" aria-label="Fix und variabel je Monat">`;
+  daten.forEach((d, i) => {
+    const x = i * slot + (slot - breite) / 2, hf = y(d.fx), hv = y(d.va), basis = h - unten;
+    svg += `<g class="fvbar ${d.aktiv ? "gewaehlt" : ""} ${d.zukunft ? "zukunft" : ""}" data-i="${i}">
+      <rect class="treffer" x="${(i * slot).toFixed(1)}" y="0" width="${slot.toFixed(1)}" height="${h}" fill="transparent"/>
+      ${d.zukunft || d.fx + d.va === 0 ? `<rect class="leer" x="${x.toFixed(1)}" y="${basis - 1.5}" width="${breite.toFixed(1)}" height="1.5" rx="0.75"/>` : ""}
+      ${hf > 0 ? `<rect class="fix" x="${x.toFixed(1)}" y="${(basis - hf).toFixed(1)}" width="${breite.toFixed(1)}" height="${hf.toFixed(1)}" rx="${hv > 0 ? 0 : 3}"/>` : ""}
+      ${hv > 0 ? `<rect class="var" x="${x.toFixed(1)}" y="${(basis - hf - hv).toFixed(1)}" width="${breite.toFixed(1)}" height="${hv.toFixed(1)}" rx="3"/>` : ""}
+      ${hv > 0 && hf > 0 ? `<rect class="var" x="${x.toFixed(1)}" y="${(basis - hf - Math.min(3, hv)).toFixed(1)}" width="${breite.toFixed(1)}" height="${Math.min(3, hv).toFixed(1)}"/>` : ""}
+      <title>${esc(d.label)}: Fix ${geld(d.fx)}, Variabel ${geld(d.va)}</title></g>
+      <text x="${(i * slot + slot / 2).toFixed(1)}" y="${h - 4}" text-anchor="middle">${esc(d.kurz)}</text>`;
+  });
+  if (mittel > 0) svg += `<line class="mittel" x1="0" x2="${b}" y1="${(h - unten - y(mittel)).toFixed(1)}" y2="${(h - unten - y(mittel)).toFixed(1)}"/>`;
+  return svg + "</svg>";
+}
 async function fixVariabelAnsicht() {
   S.fv = S.fv || { monat: new Date(new Date().getFullYear(), new Date().getMonth(), 1), umlegen: true, einheit: "monat" };
   const f = S.fv;
@@ -1408,6 +1431,28 @@ async function fixVariabelAnsicht() {
       const katId = alle.findLast((e) => wkSchluessel(e) === x.schluessel)?.kategorie_id ?? null;
       fix.push({ art: "anteil", name: x.name, betrag: monatsanteil(x), kategorie_id: katId, rhythmus: x.rhythmus, schluessel: x.schluessel, posten: x });
     }
+  }
+  // Fix/variabel je Monat für das Diagramm (gleiche Regeln wie unten)
+  const monatsSummen = (mVon, mBis, mitUmlegen) => {
+    let fx = 0, va = 0;
+    for (const e of alle) {
+      const t = e.datum.slice(0, 10), w = eigen(e);
+      if (t < mVon || t > mBis || w == null) continue;
+      if (!istFix(e)) { va += w; continue; }
+      if (mitUmlegen && selten(postenNach.get(wkSchluessel(e)))) continue;
+      fx += w;
+    }
+    if (mitUmlegen) for (const x of posten.filter(selten)) if (x.erster <= mBis && tageZwischen(x.letzter, mVon) <= x.tage + 10) fx += monatsanteil(x);
+    return { fx, va };
+  };
+  const heuteIso = isoTag(new Date());
+  const diagrammMonate = [];
+  for (let i = 0; i < 12; i++) {
+    const m = jahr ? new Date(vonD.getFullYear(), i, 1) : new Date(f.monat.getFullYear(), f.monat.getMonth() - 11 + i, 1);
+    const mVon = isoTag(m), mBis = isoTag(new Date(m.getFullYear(), m.getMonth() + 1, 0));
+    const zukunft = mVon > heuteIso;
+    diagrammMonate.push({ m, label: `${MONATE[m.getMonth()]} ${m.getFullYear()}`, kurz: MON_KURZ[m.getMonth()], zukunft,
+      aktiv: !jahr && i === 11, ...(zukunft ? { fx: 0, va: 0 } : monatsSummen(mVon, mBis, umlegen)) });
   }
   const summe = (l, fn) => l.reduce((s, x) => s + fn(x), 0);
   const fixSumme = summe(fix, (x) => x.betrag), varSumme = summe(variabel, eigen);
@@ -1466,7 +1511,8 @@ async function fixVariabelAnsicht() {
       <div class="fv-kachel"><div class="leise">Fix</div><div class="fv-wert zahl">${geld(fixSumme)}</div><div class="leise">${teil(fixSumme)} %${jahr ? ` · Ø ${geld(fixSumme / monateImZeitraum)}/Monat` : ""}</div></div>
       <div class="fv-kachel"><div class="leise">Variabel</div><div class="fv-wert zahl">${geld(varSumme)}</div><div class="leise">${teil(varSumme)} %${jahr ? ` · Ø ${geld(varSumme / monateImZeitraum)}/Monat` : ""}</div></div>
     </div>
-    <div class="band" aria-hidden="true"><span style="flex-grow:${fixSumme || 0.0001};background:var(--akzent)"></span><span style="flex-grow:${varSumme || 0.0001};background:var(--leise)"></span></div>
+    <div class="block"><h2>${jahr ? "Pro Monat" : "Letzte 12 Monate"}<span class="leise"><i class="fv-punkt fix"></i>Fix <i class="fv-punkt var"></i>Variabel</span></h2>
+      ${fvDiagramm(diagrammMonate)}<div class="diagramm-info" id="fv-info">Tippe auf einen Monat für Details</div></div>
     <p class="leise" style="font-size:13px;margin:6px 4px">Zusammen ${geld(gesamt)}${laufend ? " bis heute" : ""}${jahr ? `, Ø ${geld(gesamt / monateImZeitraum)} pro Monat${laufend ? ` (${monateImZeitraum} ${monateImZeitraum === 1 ? "Monat" : "Monate"})` : ""}` : umlegen ? ", seltene Fixkosten als Monatsanteil" : ""}.</p>
     ${jahr ? "" : `<div class="mehr-liste">${checkZeile("fv-umlegen", f.umlegen, "Vierteljährliche und jährliche Kosten auf die Monate verteilen")}</div>`}
     <div class="abschnitt">Fixkosten</div>
@@ -1474,6 +1520,12 @@ async function fixVariabelAnsicht() {
     <div class="abschnitt">Variable Ausgaben</div>
     <div class="block fv-block">${varHtml || '<div class="leer">Keine variablen Ausgaben in diesem ${jahr ? "Jahr" : "Monat"}.</div>'}</div>
     <p class="leise" style="font-size:13px;margin:16px 4px">Fixkosten sind Ausgaben, die regelmäßig mit gleicher Bezeichnung und weitgehend gleichem Betrag kommen (wie unter „Wiederkehrende Ausgaben“). Tippe auf eine Ausgabe, um sie zu öffnen oder anders zuzuordnen.</p>`;
+  $$("#fv-inhalt .fvbar").forEach((r) => (r.onclick = () => {
+    const d = diagrammMonate[+r.dataset.i];
+    $$("#fv-inhalt .fvbar").forEach((x) => x.classList.toggle("gewaehlt", x === r));
+    $("#fv-info").innerHTML = `${esc(d.label)}: Fix <b class="zahl">${geld(d.fx)}</b> · Variabel <b class="zahl">${geld(d.va)}</b>${!d.zukunft && (jahr || !d.aktiv) ? ' <button class="knopf zweit klein" style="margin-left:6px">Öffnen</button>' : ""}`;
+    $("#fv-info button")?.addEventListener("click", () => { f.einheit = "monat"; f.monat = d.m; fixVariabelAnsicht(); });
+  }));
   $("#fv-umlegen")?.addEventListener("change", (ev) => { f.umlegen = ev.target.checked; fixVariabelAnsicht(); });
   const alleBuchungen = (name) => { sheetSchliessen(); Object.assign(S.suche, { q: name, kategorie: "", konto: "", pruefen: false, offen: false, von: jahr ? von : "", bis: jahr ? bis : "", sortierung: "" }); tabWechseln("eintraege"); };
   const eintragOeffnen = (id) => { const e = alle.find((x) => x.id === id); if (e) { sheetSchliessen(); erfassen(e); } };

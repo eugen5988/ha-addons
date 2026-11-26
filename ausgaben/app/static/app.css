@@ -412,3 +412,12 @@ details.fv-gruppe summary.katzeile { border: 0; }
 .fv-zeile .fv-name { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14.5px; }
 .fv-zeile small { display: block; font-size: 12.5px; }
 .fv-zeile .zahl { font-weight: 600; font-size: 14.5px; }
+.fv-diagramm .fvbar { cursor: pointer; }
+.fv-diagramm .fix { fill: var(--akzent); }
+.fv-diagramm .var { fill: var(--akzent); opacity: .38; }
+.fv-diagramm .leer { fill: var(--flaeche-2); }
+.fv-diagramm:has(.fvbar.gewaehlt) .fvbar:not(.gewaehlt) .fix, .fv-diagramm:has(.fvbar.gewaehlt) .fvbar:not(.gewaehlt) .var { opacity: .3; }
+.fv-diagramm:has(.fvbar.gewaehlt) .fvbar:not(.gewaehlt) .var { opacity: .15; }
+.fv-punkt { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin: 0 4px 0 10px; vertical-align: 0; }
+.fv-punkt.fix { background: var(--akzent); }
+.fv-punkt.var { background: var(--akzent); opacity: .38; }

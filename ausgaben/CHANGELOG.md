@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.20.0
+
+- Fix & variabel mit Diagramm: gestapelte Balken je Monat (unten Fix, oben Variabel, gestrichelt der Durchschnitt). In der Monatsansicht die letzten 12 Monate mit dem gewählten Monat hervorgehoben, in der Jahresansicht Januar bis Dezember. Monat antippen zeigt die Werte, „Öffnen“ springt in diesen Monat.
+
 ## 1.19.0
 
 - Fix & variabel: neue Umschaltung **Monat / Jahr**. Im Jahr stehen die tatsächlich gebuchten Fix- und variablen Kosten mit Ø pro Monat; je Kategorie eine Zeile pro Posten bzw. Händler (z. B. „Edeka 20× · Ø 52,53 €“), Antippen führt zu allen Buchungen im Jahr.
