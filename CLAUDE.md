@@ -1,12 +1,12 @@
 # Hinweise für Änderungen an diesem Repository
 
-Home-Assistant-Add-on-Repository. Einziges Add-on bisher: `ausgaben/` (Haushaltsbuch).
+Home-Assistant-Add-on-Repository. Add-ons: `ausgaben/` (Haushaltsbuch) und `whatsapp_archiv/` (Medien-Viewer).
 Der Nutzer spricht Deutsch; Oberfläche, Texte, Commit-Nachrichten und Changelog auf Deutsch.
 
 ## Feste Regeln
 
-- **Jede Änderung bekommt eine neue Version** in `ausgaben/config.yaml` und einen Eintrag oben in
-  `ausgaben/CHANGELOG.md`. Der Nutzer aktualisiert über den App Store („Aktualisieren“).
+- **Jede Änderung bekommt eine neue Version** in `<addon>/config.yaml` und einen Eintrag oben in
+  `<addon>/CHANGELOG.md` (nur beim Add-on, das sich ändert). Der Nutzer aktualisiert über den App Store („Aktualisieren“).
 - **Slug `ausgaben` nie ändern.** Daran hängen Datenspeicher (`/data`) und Panel-Adresse.
   Der Anzeigename (`name`, `panel_title`, `manifest.json`, `<title>`) darf sich ändern.
 - **Cache-Busting:** Bei Änderungen an `app/static/*` die Zahl `?v=N` in `app/static/index.html`
@@ -33,16 +33,26 @@ Der Nutzer spricht Deutsch; Oberfläche, Texte, Commit-Nachrichten und Changelog
 - `next_import.py`, `export.py`, `auswertung.py`, `waehrung.py`, `einstellungen.py`
 - `static/` – Web-App ohne Build-Schritt (`index.html`, `app.js`, `app.css`, Symbole)
 
+## Aufbau `whatsapp_archiv/app`
+
+- `server.py` – aiohttp, liefert ein vorhandenes Archiv aus (Mac-App „WhatsApp-Archiv“ erzeugt es aus dem
+  iPhone-Backup). Archivsuche unter `/media` und `/share`, Zugriffsschutz wie bei Ausgaben (Ingress-IP frei,
+  sonst Token per `?t=` oder Cookie `wa_token`). Range-Anfragen für Videos auf iOS.
+- `viewer.html` – Viewer-Oberfläche; ersetzt beim Ausliefern die `viewer/index.html` aus dem Archiv, damit
+  Verbesserungen per Add-on-Update ankommen. Daten (`viewer/data/*.js`, `viewer/thumbs/`) kommen aus dem Archiv.
+- **Slug `whatsapp_archiv` nie ändern.**
+
 ## Tests
 
 ```bash
-pip install -r ausgaben/requirements.txt pillow
+pip install -r ausgaben/requirements.txt -r whatsapp_archiv/requirements.txt pillow
 python tests/test_tr.py
 python tests/test_beleg.py
 python tests/test_ki.py
 python tests/test_anteile.py
 python tests/test_offline.py
 python tests/test_update.py
+python tests/test_whatsapp_archiv.py
 ```
 
 Die Tests laufen ohne Netz: pytr und die Claude-API werden nachgebaut (`tests/fake_pytr.py`).

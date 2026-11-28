@@ -18,6 +18,7 @@ Eigene Add-ons für Home Assistant OS bzw. Supervised.
 | Add-on | Beschreibung |
 |---|---|
 | [Ausgaben](ausgaben/) | Haushaltsbuch mit automatischer Erfassung (Trade Republic, DKB, comdirect), Kassenbon-Scan und KI-Kategorisierung |
+| [WhatsApp-Archiv](whatsapp_archiv/) | Medien-Viewer für ein WhatsApp-Archiv auf dem NAS – Fotos, Videos, Sprachnachrichten und Dokumente je Chat |
 
 ## Updates
 

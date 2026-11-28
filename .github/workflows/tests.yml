@@ -8,10 +8,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install -r ausgaben/requirements.txt pillow
+      - run: pip install -r ausgaben/requirements.txt -r whatsapp_archiv/requirements.txt pillow
       - run: python tests/test_tr.py
       - run: python tests/test_beleg.py
       - run: python tests/test_ki.py
       - run: python tests/test_anteile.py
       - run: python tests/test_offline.py
       - run: python tests/test_update.py
+      - run: python tests/test_whatsapp_archiv.py
