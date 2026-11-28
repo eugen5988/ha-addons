@@ -1,5 +1,5 @@
 name: WhatsApp-Archiv
-version: "1.0.0"
+version: "1.0.1"
 slug: whatsapp_archiv
 description: Medien-Viewer für ein WhatsApp-Archiv auf dem NAS – Fotos, Videos, Sprachnachrichten und Dokumente je Chat
 url: https://github.com/eugen5988/ha-addons/tree/main/whatsapp_archiv

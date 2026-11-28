@@ -79,7 +79,7 @@ window.WA_LOAD=(id,items)=>{DATA[id]=items;};
 function initials(n){return (n.replace(/[^\p{L}\p{N} ]/gu,"").trim().split(/\s+/).map(w=>w[0]).join("").slice(0,2)||"#").toUpperCase();}
 
 /* ---------- Chatliste ---------- */
-function list(){cur=null;document.title="WhatsApp-Archiv";
+function list(){cur=null;window._fill=null;document.title="WhatsApp-Archiv";
  app.innerHTML=`<header><div class="top"><h1>WhatsApp-Archiv</h1></div><input id="q" type="search" placeholder="Chat suchen …" autocomplete="off"></header><div class="list" id="rows"></div>`;
  const q=$("#q");q.value=sessionStorage.getItem("q")||"";
  const draw=()=>{const v=q.value.toLowerCase();sessionStorage.setItem("q",q.value);
@@ -120,9 +120,11 @@ async function chat(id,tab,year){const c=WA_CHATS.find(x=>x.id==id);if(!c){locat
    else h+=`<div class="item"><div style="font-size:26px">📄</div><div class="t"><div class="n">${esc(it[5]||it[0].split("/").pop())}</div><div class="s">${esc(it[3])} · ${dt(it[2],1)}</div></div><a href="${u}" class="ext" data-n="${esc(it[5]||"Dokument")}">Öffnen</a></div>`;}
   if(visual)box.insertAdjacentHTML("beforeend",h);else body.insertAdjacentHTML("beforeend",h);
   if(tab==="v")box.querySelectorAll("video[data-src]").forEach(v=>vio.observe(v));};
- more();
+ /* so lange nachladen, bis Bildschirm + Reserve gefüllt sind (auch bei breiten Fenstern mit vielen Spalten) */
+ const fill=()=>{let n=0;const se=$("#sent");while(se&&pos<items.length&&se.getBoundingClientRect().top<innerHeight+1500&&n++<40)more();};
+ window._fill=fill;more();fill();
  if(window._io)window._io.disconnect();
- window._io=new IntersectionObserver(es=>{if(es.some(e=>e.isIntersecting)&&pos<items.length)more();},{rootMargin:"1200px"});
+ window._io=new IntersectionObserver(es=>{if(es.some(e=>e.isIntersecting))fill();},{rootMargin:"1500px"});
  window._io.observe($("#sent"));
  if(!visual)body.onclick=e=>{const a=e.target.closest("a.ext");if(a){e.preventDefault();overlay(a.getAttribute("href"),a.dataset.n);}};
  if(visual)box.onclick=e=>{const t=e.target.closest(".tile");if(t)openLB(+t.dataset.i);};
@@ -153,5 +155,7 @@ function route(){closeLB();closeOv();const m=location.hash.match(/^#\/c\/(\d+)(?
  if(m)chat(+m[1],m[2],m[3]?+m[3]:0);else list();}
 window.addEventListener("scroll",()=>{if(!cur)sessionStorage.setItem("ly",window.scrollY);},{passive:true});
 window.addEventListener("hashchange",route);
+let _ft=0;const _onSR=()=>{if(_ft)return;_ft=requestAnimationFrame(()=>{_ft=0;if(cur&&window._fill)window._fill();});};
+window.addEventListener("scroll",_onSR,{passive:true});window.addEventListener("resize",_onSR);
 load("data/chats.js").then(route).catch(()=>{app.innerHTML=`<div class="empty">Archiv-Daten nicht erreichbar.<br>Ist das NAS online?<br><br><small>Beim direkten Aufruf ohne Home Assistant: Adresse einmal mit <code>?t=ZUGRIFFS-TOKEN</code> öffnen.</small></div>`;});
 </script></body></html>
