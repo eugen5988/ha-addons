@@ -1,0 +1,30 @@
+name: WhatsApp-Archiv
+version: "1.0.0"
+slug: whatsapp_archiv
+description: Medien-Viewer für ein WhatsApp-Archiv auf dem NAS – Fotos, Videos, Sprachnachrichten und Dokumente je Chat
+url: https://github.com/eugen5988/ha-addons/tree/main/whatsapp_archiv
+arch:
+  - amd64
+  - aarch64
+init: false
+startup: application
+boot: auto
+ingress: true
+ingress_port: 8099
+panel_icon: mdi:whatsapp
+panel_title: WhatsApp-Archiv
+ports:
+  8099/tcp: null
+ports_description:
+  8099/tcp: Direkter Zugriff als iPhone-Web-App (nur mit Zugriffs-Token)
+map:
+  - type: media
+    read_only: true
+  - type: share
+    read_only: true
+options:
+  archiv_pfad: ""
+  zugriffs_token: ""
+schema:
+  archiv_pfad: str?
+  zugriffs_token: password?

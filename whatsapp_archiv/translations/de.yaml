@@ -1,0 +1,9 @@
+configuration:
+  archiv_pfad:
+    name: Pfad zum Archiv
+    description: Ordner „WhatsApp-Archiv“ auf dem eingebundenen NAS, z. B. /media/nas/WhatsApp-Archiv. Leer = automatisch unter /media und /share suchen.
+  zugriffs_token:
+    name: Zugriffs-Token
+    description: Nur nötig für den direkten Aufruf über den Port (außerhalb von Home Assistant). Leer = direkter Zugriff gesperrt.
+network:
+  8099/tcp: Direkter Zugriff als iPhone-Web-App (nur mit Zugriffs-Token)
